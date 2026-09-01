@@ -39,6 +39,7 @@ const emptyBrand = {
   description: "",
   displayOrder: 0,
   isActive: true,
+  bgColor:"",
   seo: null,
 };
 
@@ -120,6 +121,7 @@ export default function BrandsPage() {
     setBrandForm({
       name: brand.name || "",
       slug: brand.slug || "",
+      bgColor: brand.bgColor || "",
       description: brand.description || "",
       displayOrder:
         brand.displayOrder ?? 0,
@@ -162,7 +164,7 @@ export default function BrandsPage() {
       name: value,
       slug:
         !editingBrand ||
-        prev.slug ===
+          prev.slug ===
           generateSlug(prev.name)
           ? generateSlug(value)
           : prev.slug,
@@ -256,7 +258,13 @@ export default function BrandsPage() {
       formData.append(
         "description",
         brandForm.description?.trim() ||
-          ""
+        ""
+      );
+
+
+      formData.append(
+        "bgColor",
+        brandForm.bgColor?.trim() || "#000000"
       );
 
       formData.append(
@@ -303,7 +311,7 @@ export default function BrandsPage() {
         if (!res?.success) {
           throw new Error(
             res?.message ||
-              "Failed to update brand"
+            "Failed to update brand"
           );
         }
 
@@ -315,11 +323,11 @@ export default function BrandsPage() {
         setBrands((prev) =>
           prev.map((brand) =>
             brand.id ===
-            editingBrand.id
+              editingBrand.id
               ? {
-                  ...brand,
-                  ...updated,
-                }
+                ...brand,
+                ...updated,
+              }
               : brand
           )
         );
@@ -336,7 +344,7 @@ export default function BrandsPage() {
         if (!res?.success) {
           throw new Error(
             res?.message ||
-              "Failed to create brand"
+            "Failed to create brand"
           );
         }
 
@@ -363,13 +371,11 @@ export default function BrandsPage() {
       );
 
       toast.error(
-        `Failed to ${
-          editingBrand
-            ? "update"
-            : "create"
-        } brand: ${
-          err?.message ||
-          "Unknown error"
+        `Failed to ${editingBrand
+          ? "update"
+          : "create"
+        } brand: ${err?.message ||
+        "Unknown error"
         }`
       );
     } finally {
@@ -398,7 +404,7 @@ export default function BrandsPage() {
       if (!res?.success) {
         throw new Error(
           res?.message ||
-            "Deletion failed"
+          "Deletion failed"
         );
       }
 
@@ -423,9 +429,8 @@ export default function BrandsPage() {
       );
 
       toast.error(
-        `Failed to delete brand: ${
-          err?.message ||
-          "Unknown error"
+        `Failed to delete brand: ${err?.message ||
+        "Unknown error"
         }`
       );
     } finally {
@@ -578,11 +583,10 @@ export default function BrandsPage() {
 
                     <td className="px-4 py-4">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                          brand.isActive
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${brand.isActive
                             ? "bg-green-100 text-green-700"
                             : "bg-gray-100 text-gray-600"
-                        }`}
+                          }`}
                       >
                         {brand.isActive
                           ? "Active"
@@ -700,6 +704,24 @@ export default function BrandsPage() {
                 }
                 placeholder="Enter brand description"
                 rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="brand-name">
+                Background Colour
+              </Label>
+
+              <Input
+                id="brand-name"
+                value={brandForm.bgColor}
+                onChange={(e) =>
+                  handleInputChange(
+                    "bgColor",
+                    e.target.value
+                  )
+                }
+                placeholder="Enter brand background colour"
               />
             </div>
 
@@ -832,8 +854,8 @@ export default function BrandsPage() {
               {saving
                 ? "Saving..."
                 : editingBrand
-                ? "Update Brand"
-                : "Create Brand"}
+                  ? "Update Brand"
+                  : "Create Brand"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -111,8 +111,11 @@ export const createProductFormData = (productData) => {
         tags,
         seo,
         isFeatured,
+        brandId,
         ...rest
     } = productData;
+
+    console.log(productData)
 
     Object.entries(rest).forEach(([key, value]) => {
         if (value === null || value === undefined) {
@@ -126,6 +129,7 @@ export const createProductFormData = (productData) => {
     }
 
     formData.append("isFeatured", JSON.stringify(isFeatured));
+    formData.append("brandId", toInteger(brandId));
 
     if (seo) {
         formData.append("seo", JSON.stringify(seo));
@@ -177,6 +181,8 @@ export const getProduct = async () => {
                 },
             }
         );
+
+        console.log(response)
 
         return response.data;
     } catch (error) {
@@ -263,11 +269,6 @@ export const updateProduct = async (
                 }
             );
 
-        console.log(
-            "UPDATE PRODUCT RESPONSE:",
-            response.data
-        );
-
         return response.data;
     } catch (error) {
         console.error(
@@ -303,11 +304,6 @@ export const createProduct = async (
                     },
                 }
             );
-
-        console.log(
-            "CREATE PRODUCT RESPONSE:",
-            response.data
-        );
 
         return response.data;
     } catch (error) {
