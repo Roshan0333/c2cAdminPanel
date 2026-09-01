@@ -12,8 +12,6 @@ export const getBrands = async () => {
             }
         );
 
-        console.log(response.data)
-
         return response.data
     }
     catch (err) {
