@@ -1,20 +1,22 @@
 import axios from "axios";
 
 export const getBrands = async () => {
-    try{
+    try {
         const response = await axios.get(
             `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/`,
             {
-                headers:{
-                    "Content-Type":"application/json",
-                    Authorization:`Bearer ${sessionStorage.getItem("pm_admin_token")}`
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${sessionStorage.getItem("pm_admin_token")}`
                 }
             }
         );
 
+        console.log(response.data)
+
         return response.data
     }
-    catch(err){
+    catch (err) {
         if (err.response) {
             if (err.response) {
                 console.error("Server Error:", err.response.status);
@@ -33,21 +35,21 @@ export const getBrands = async () => {
 }
 
 export const createBrand = async (brandData) => {
-    try{
+    try {
         const response = await axios.post(
             `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/`,
             brandData,
             {
-                headers:{
+                headers: {
                     "Content-Type": "multipart/form-data",
-                    Authorization:`Bearer ${sessionStorage.getItem("pm_admin_token")}`
+                    Authorization: `Bearer ${sessionStorage.getItem("pm_admin_token")}`
                 }
             }
         );
 
         return response.data
     }
-    catch(err){
+    catch (err) {
         if (err.response) {
             if (err.response) {
                 console.error("Server Error:", err.response.status);
@@ -65,22 +67,25 @@ export const createBrand = async (brandData) => {
     }
 }
 
-export const updateBrand = async (brandData, id) => {
-    try{
+export const updateBrand = async (id, brandData) => {
+    try {
+
+        console.log(brandData)
+
         const response = await axios.put(
             `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/${id}`,
             brandData,
             {
-                headers:{
+                headers: {
                     "Content-Type": "multipart/form-data",
-                    Authorization:`Bearer ${sessionStorage.getItem("pm_admin_token")}`
+                    Authorization: `Bearer ${sessionStorage.getItem("pm_admin_token")}`
                 }
             }
         );
 
         return response.data
     }
-    catch(err){
+    catch (err) {
         if (err.response) {
             if (err.response) {
                 console.error("Server Error:", err.response.status);
@@ -99,20 +104,20 @@ export const updateBrand = async (brandData, id) => {
 }
 
 export const deleteBrand = async (id) => {
-    try{
+    try {
         const response = await axios.delete(
             `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/${id}`,
             {
-                headers:{
-                    "Content-Type":"application/json",
-                    Authorization:`Bearer ${sessionStorage.getItem("pm_admin_token")}`
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${sessionStorage.getItem("pm_admin_token")}`
                 }
             }
         );
 
         return response.data
     }
-    catch(err){
+    catch (err) {
         if (err.response) {
             if (err.response) {
                 console.error("Server Error:", err.response.status);

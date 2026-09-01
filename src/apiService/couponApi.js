@@ -41,7 +41,7 @@ export const createCoupon = async (couponData) => {
             couponData,
             {
                 headers:{
-                    "Content-Type": "multipart/form-data",
+                    "Content-Type": "application/json",
                     Authorization:`Bearer ${sessionStorage.getItem("pm_admin_token")}`
                 }
             }
@@ -68,7 +68,7 @@ export const createCoupon = async (couponData) => {
     }
 }
 
-export const updateCoupon = async (couponData, id) => {
+export const updateCoupon = async (id, couponData) => {
     try{
         const response = await axios.put(
             `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/coupons/${id}`,

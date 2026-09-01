@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 
@@ -9,12 +10,11 @@ import CouponTable from "@/app/components/ui/CouponTable";
 import CouponForm from "@/app/components/ui/CouponForm";
 import DeleteConfirmDialog from "@/app/components/ui/DeleteConfirmDialog";
 import TableSkeleton from "@/app/components/ui/TableSkeleton";
-import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   getCoupon,
-  updateCoupon,
   createCoupon,
+  updateCoupon,
   deleteCoupon,
 } from "@/apiService/couponApi";
 
@@ -26,50 +26,44 @@ export default function CouponsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState(null);
 
-  const [deleteDialogOpen, setDeleteDialogOpen] =
-    useState(false);
-
-  const [couponToDelete, setCouponToDelete] =
-    useState(null);
-
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [couponToDelete, setCouponToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    async function fetchCoupons() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const res = await getCoupon();
-
-        if (!res?.success) {
-          throw new Error(
-            res?.message || "Failed to load coupons"
-          );
-        }
-
-        setCoupons(
-          res.coupons ||
-            res.data ||
-            []
-        );
-      } catch (err) {
-        console.error(
-          "Failed to fetch coupons:",
-          err
-        );
-
-        setError(
-          err?.message ||
-            "Failed to load coupons"
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchCoupons();
   }, []);
+
+  async function fetchCoupons() {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await getCoupon();
+
+      if (!res?.success) {
+        throw new Error(
+          res?.message || "Failed to load coupons"
+        );
+      }
+
+      const list = Array.isArray(res.coupons)
+        ? res.coupons
+        : Array.isArray(res.data)
+          ? res.data
+          : [];
+
+      setCoupons(list);
+    } catch (err) {
+      console.error("Failed to fetch coupons:", err);
+
+      setError(
+        err?.message || "Failed to load coupons"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function handleAddClick() {
     setEditingCoupon(null);
@@ -88,28 +82,27 @@ export default function CouponsPage() {
 
   async function confirmDelete() {
     if (!couponToDelete?.id) {
+      toast.error("Invalid coupon selected");
       return;
     }
 
-    setDeleting(true);
-
     try {
+      setDeleting(true);
+
       const res = await deleteCoupon(
         couponToDelete.id
       );
 
       if (!res?.success) {
         throw new Error(
-          res?.message ||
-            "Deletion failed"
+          res?.message || "Failed to delete coupon"
         );
       }
 
       setCoupons((prev) =>
         prev.filter(
-          (coupon) =>
-            coupon.id !==
-            couponToDelete.id
+          (item) =>
+            item.id !== couponToDelete.id
         )
       );
 
@@ -126,24 +119,118 @@ export default function CouponsPage() {
       );
 
       toast.error(
-        `Failed to delete coupon: ${
-          err?.message ||
-          "Unknown error"
-        }`
+        err?.message ||
+          "Failed to delete coupon"
       );
     } finally {
       setDeleting(false);
     }
   }
 
-  async function handleSave(coupon) {
+  async function handleSave(formData) {
+    if (!formData) {
+      toast.error("Coupon data is missing");
+      return;
+    }
+
+    const payload = {
+      code: String(formData.code || "")
+        .trim()
+        .toUpperCase(),
+
+      discountType:
+        formData.discountType || "PERCENTAGE",
+
+      discountValue:
+        formData.discountValue === "" ||
+        formData.discountValue === null ||
+        formData.discountValue === undefined
+          ? null
+          : Number(formData.discountValue),
+
+      applicableProductIds:
+        Array.isArray(
+          formData.applicableProductIds
+        )
+          ? formData.applicableProductIds
+              .map(Number)
+              .filter(
+                (id) => !Number.isNaN(id)
+              )
+          : [],
+
+      applicableCategoryIds:
+        Array.isArray(
+          formData.applicableCategoryIds
+        )
+          ? formData.applicableCategoryIds
+              .map(Number)
+              .filter(
+                (id) => !Number.isNaN(id)
+              )
+          : [],
+
+      applicableBrands:
+        Array.isArray(
+          formData.applicableBrands
+        )
+          ? formData.applicableBrands.filter(
+              Boolean
+            )
+          : [],
+
+      minCartValue:
+        formData.minCartValue === "" ||
+        formData.minCartValue === null ||
+        formData.minCartValue === undefined
+          ? null
+          : Number(formData.minCartValue),
+
+      maxDiscount:
+        formData.maxDiscount === "" ||
+        formData.maxDiscount === null ||
+        formData.maxDiscount === undefined
+          ? null
+          : Number(formData.maxDiscount),
+
+      usageLimit:
+        formData.usageLimit === "" ||
+        formData.usageLimit === null ||
+        formData.usageLimit === undefined
+          ? null
+          : Number(formData.usageLimit),
+
+      expiresAt:
+        formData.expiresAt || null,
+
+      isActive:
+        Boolean(formData.isActive),
+
+      showOnCheckout:
+        Boolean(formData.showOnCheckout),
+    };
+
+    if (!payload.code) {
+      toast.error("Coupon code is required");
+      return;
+    }
+
+    if (
+      payload.discountValue === null ||
+      Number.isNaN(payload.discountValue)
+    ) {
+      toast.error(
+        "Discount value is required"
+      );
+      return;
+    }
+
     try {
-      if (coupon?.id) {
-        const res =
-          await updateCoupon(
-            coupon.id,
-            coupon
-          );
+      if (formData.id) {
+        const res = await updateCoupon(
+          formData.id,
+          payload
+        );
 
         if (!res?.success) {
           throw new Error(
@@ -155,11 +242,15 @@ export default function CouponsPage() {
         const updated =
           res.coupon ||
           res.data ||
-          coupon;
+          {
+            ...formData,
+            ...payload,
+            id: formData.id,
+          };
 
         setCoupons((prev) =>
           prev.map((item) =>
-            item.id === coupon.id
+            item.id === formData.id
               ? {
                   ...item,
                   ...updated,
@@ -171,36 +262,36 @@ export default function CouponsPage() {
         toast.success(
           "Coupon updated successfully!"
         );
+      } else {
+        const res =
+          await createCoupon(payload);
 
-        setFormOpen(false);
-        setEditingCoupon(null);
+        if (!res?.success) {
+          throw new Error(
+            res?.message ||
+              "Failed to create coupon"
+          );
+        }
 
-        return;
-      }
+        const created =
+          res.coupon ||
+          res.data;
 
-      const res =
-        await createCoupon(coupon);
+        if (!created) {
+          throw new Error(
+            "Coupon was created but no coupon was returned"
+          );
+        }
 
-      if (!res?.success) {
-        throw new Error(
-          res?.message ||
-            "Failed to create coupon"
+        setCoupons((prev) => [
+          created,
+          ...prev,
+        ]);
+
+        toast.success(
+          "Coupon created successfully!"
         );
       }
-
-      const created =
-        res.coupon ||
-        res.data ||
-        res;
-
-      setCoupons((prev) => [
-        created,
-        ...prev,
-      ]);
-
-      toast.success(
-        "Coupon created successfully!"
-      );
 
       setFormOpen(false);
       setEditingCoupon(null);
@@ -212,7 +303,7 @@ export default function CouponsPage() {
 
       toast.error(
         `Failed to ${
-          coupon?.id
+          formData.id
             ? "update"
             : "create"
         } coupon: ${
@@ -307,14 +398,12 @@ export default function CouponsPage() {
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}
-        onOpenChange={
-          setDeleteDialogOpen
-        }
+        onOpenChange={setDeleteDialogOpen}
         title="Delete Coupon"
         description={
           couponToDelete
             ? `Are you sure you want to delete "${couponToDelete.code}"? This action cannot be undone.`
-            : ""
+            : "Are you sure you want to delete this coupon?"
         }
         onConfirm={confirmDelete}
         loading={deleting}

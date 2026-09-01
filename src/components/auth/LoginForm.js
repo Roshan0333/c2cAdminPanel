@@ -56,6 +56,7 @@ export function LoginForm() {
 
       if (!result.success) {
         setError(result.message);
+        return
       }
     } catch (err) {
       setError("Something went wrong. Please try again.");
