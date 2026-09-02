@@ -16,7 +16,9 @@ import {
   ShoppingCart,
   Tags,
   BookOpen,
-  LayoutGrid
+  LayoutGrid,
+  Target,
+  SlidersHorizontal 
 } from "lucide-react";
 
 const navGroups = [
@@ -73,6 +75,12 @@ const navGroups = [
         href: "/admin/ecommerce/banners",
         icon: ImageIcon,
       },
+      ,
+      {
+        label: "Featured Banner",
+        href: "/admin/ecommerce/featuredBanner",
+        icon: ImageIcon,
+      },
       {
         label:"Brand",
         href: "/admin/ecommerce/brands",
@@ -87,6 +95,16 @@ const navGroups = [
         label:"Category",
         href: "/admin/ecommerce/category",
         icon: LayoutGrid,
+      },
+      {
+        label:"Goal",
+        href: "/admin/ecommerce/goal",
+        icon: Target,
+      },
+      {
+        label:"Attributes",
+        href: "/admin/ecommerce/attribute",
+        icon: SlidersHorizontal ,
       }
     ],
   },

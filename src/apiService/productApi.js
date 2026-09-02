@@ -92,7 +92,6 @@ function getErrorResponse(
     };
 }
 
-
 export const createProductFormData = (productData) => {
     const formData = new FormData();
     const {
@@ -114,6 +113,7 @@ export const createProductFormData = (productData) => {
         brandId,
         ...rest
     } = productData;
+
 
     Object.entries(rest).forEach(([key, value]) => {
         if (value === null || value === undefined) {
@@ -170,7 +170,7 @@ export const createProductFormData = (productData) => {
 export const getProduct = async (page, limit) => {
     try {
         const response = await axios.get(
-            `${API_URL}?page=${page}&limit=${limit}`,
+            `${API_URL}dashboard/all?page=${page}&limit=${limit}`,
             {
                 headers: {
                     ...getAuthHeaders(),
@@ -180,8 +180,8 @@ export const getProduct = async (page, limit) => {
             }
         );
 
-        console.log(response.data)
 
+        console.log(response.data)
         return response.data;
     } catch (error) {
         console.error(
@@ -198,7 +198,7 @@ export const getProduct = async (page, limit) => {
 
 export const deleteProduct = async (id) => {
     try {
-        // const productId = toInteger(id);
+        const productId = toInteger(id);
 
         if (productId === null) {
             return {
@@ -330,7 +330,6 @@ export const searchProduct = async (product) => {
             }
         );
 
-        console.log(response.data)
 
         return response.data;
     } catch (error) {

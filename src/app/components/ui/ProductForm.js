@@ -36,20 +36,23 @@ import {
   Images,
   Layers3,
   FolderTree,
+  AlertCircle,
 } from "lucide-react";
 import { getBrands } from "@/apiService/brandApi";
 import { getCategory } from "@/apiService/categoryApi";
+import  {getAttribute} from "@/apiService/attributeApi"
 
 const emptyVariant = {
   size: "",
-  flavour: "",
+  attributeId: "",
+  attributeValue: "",
   price: "",
   discountedPrice: "",
   stockQuantity: "",
   weight: "",
   length: "",
   height: "",
-  breadth: "",
+  wide: "",
   image: null,
   imageFile: null,
 };
@@ -287,7 +290,14 @@ function normalizeVariant(variant) {
     productId: variant?.productId,
 
     size: variant?.size ?? "",
-    flavour: variant?.flavour ?? "",
+
+    attributeId:
+      variant?.attributeId ??
+      variant?.attribute?.id ??
+      "",
+
+    attributeValue:
+      variant?.attributeValue ?? "",
 
     price: variant?.price ?? "",
     discountedPrice:
@@ -298,7 +308,7 @@ function normalizeVariant(variant) {
     weight: variant?.weight ?? "",
     length: variant?.length ?? "",
     height: variant?.height ?? "",
-    breadth: variant?.breadth ?? "",
+    wide: variant?.wide ?? "",
 
     image: variant?.image ?? null,
     imageFile: null,
@@ -348,11 +358,30 @@ function normalizeCategoryResponse(response) {
     .filter(Boolean);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Find category recursively
-|--------------------------------------------------------------------------
-*/
+function normalizeAttributes(response) {
+  const rawAttributes =
+    response?.attributes ||
+    response?.data?.attributes ||
+    response?.data ||
+    [];
+
+  if (!Array.isArray(rawAttributes)) {
+    return [];
+  }
+
+  return rawAttributes
+    .map((attribute) => {
+      if (!attribute) {
+        return null;
+      }
+
+      return {
+        id: Number(attribute.id),
+        name: attribute.name || "",
+      };
+    })
+    .filter(Boolean);
+}
 
 function findCategoryById(categories, id) {
   if (!id) {
@@ -384,11 +413,6 @@ function findCategoryById(categories, id) {
   return null;
 }
 
-/*
-|--------------------------------------------------------------------------
-| Find parent category of a child
-|--------------------------------------------------------------------------
-*/
 
 function findParentCategory(
   categories,
@@ -443,12 +467,6 @@ function normalizeProduct(product, categories = []) {
     product.brandId ??
     product.brand?.id ??
     "";
-
-  /*
-  |--------------------------------------------------------------------------
-  | Detect parent/subcategory while editing
-  |--------------------------------------------------------------------------
-  */
 
   let parentCategoryId = "";
   let subCategoryId = "";
@@ -575,6 +593,151 @@ function getFilePreview(file) {
   return null;
 }
 
+
+const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function isValidSlug(value) {
+  return SLUG_REGEX.test(value);
+}
+
+function isValidUrl(value) {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function validateBasicInfo(form, subCategories) {
+  const errors = {};
+
+  if (!form.name?.trim()) {
+    errors.name = "Product name is required.";
+  }
+
+  if (form.slug?.trim() && !isValidSlug(form.slug.trim())) {
+    errors.slug =
+      "Slug can only contain lowercase letters, numbers and hyphens (e.g. my-product-name).";
+  }
+
+  if (!form.parentCategoryId) {
+    errors.parentCategoryId =
+      "Please select a parent category.";
+  } else if (
+    subCategories.length > 0 &&
+    !form.subCategoryId
+  ) {
+    errors.subCategoryId =
+      "This category has subcategories — please select one.";
+  }
+
+  if (form.taxRate !== "" && form.taxRate !== null) {
+    const taxRate = Number(form.taxRate);
+
+    if (
+      Number.isNaN(taxRate) ||
+      taxRate < 0 ||
+      taxRate > 100
+    ) {
+      errors.taxRate =
+        "Tax rate must be a number between 0 and 100.";
+    }
+  }
+
+  return errors;
+}
+
+function validateVariants(variants) {
+  return (variants || []).map((variant) => {
+    const errors = {};
+
+    const price =
+      variant.price === "" || variant.price === null
+        ? NaN
+        : Number(variant.price);
+
+    if (Number.isNaN(price) || price <= 0) {
+      errors.price = "Price must be greater than 0.";
+    }
+
+    if (
+      variant.discountedPrice !== "" &&
+      variant.discountedPrice !== null &&
+      variant.discountedPrice !== undefined
+    ) {
+      const discounted = Number(variant.discountedPrice);
+
+      if (Number.isNaN(discounted) || discounted < 0) {
+        errors.discountedPrice =
+          "Discounted price must be a valid, non-negative number.";
+      } else if (!Number.isNaN(price) && discounted >= price) {
+        errors.discountedPrice =
+          "Discounted price must be less than the price.";
+      }
+    }
+
+    const stock =
+      variant.stockQuantity === "" ||
+      variant.stockQuantity === null
+        ? NaN
+        : Number(variant.stockQuantity);
+
+    if (Number.isNaN(stock) || stock < 0) {
+      errors.stockQuantity =
+        "Stock quantity is required and cannot be negative.";
+    }
+
+    return errors;
+  });
+}
+
+function variantsHaveErrors(variantErrors) {
+  return (variantErrors || []).some(
+    (errors) => Object.keys(errors || {}).length > 0
+  );
+}
+
+function validateSeo(seo) {
+  const errors = {};
+
+  if (seo?.canonical?.trim() && !isValidUrl(seo.canonical.trim())) {
+    errors.canonical =
+      "Enter a valid URL (e.g. https://example.com/product/slug).";
+  }
+
+  return errors;
+}
+
+function stepForErrors(basicErrors, variantErrors, seoErrors) {
+  if (Object.keys(basicErrors).length > 0) {
+    return 1;
+  }
+
+  if (variantsHaveErrors(variantErrors)) {
+    return 3;
+  }
+
+  if (Object.keys(seoErrors).length > 0) {
+    return 6;
+  }
+
+  return null;
+}
+
+function FieldError({ message }) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-red-500">
+      <AlertCircle size={12} className="shrink-0" />
+      {message}
+    </p>
+  );
+}
+
 export default function ProductForm({
   open,
   onOpenChange,
@@ -592,20 +755,24 @@ export default function ProductForm({
   const [categories, setCategories] =
     useState([]);
 
+  const [attributes, setAttributes] =
+    useState([]);
+
   const [loadingBrands, setLoadingBrands] =
     useState(false);
 
   const [loadingCategories, setLoadingCategories] =
     useState(false);
 
+  const [loadingAttributes, setLoadingAttributes] =
+    useState(false);
+
   const [currentStep, setCurrentStep] =
     useState(1);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Load data
-  |--------------------------------------------------------------------------
-  */
+  const [errors, setErrors] = useState({
+    variants: [],
+  });
 
   useEffect(() => {
     if (!open) {
@@ -614,13 +781,8 @@ export default function ProductForm({
 
     loadBrands();
     loadCategories();
+    loadAttributes();
   }, [open]);
-
-  /*
-  |--------------------------------------------------------------------------
-  | Set product after categories are loaded
-  |--------------------------------------------------------------------------
-  */
 
   useEffect(() => {
     if (!open) {
@@ -647,6 +809,7 @@ export default function ProductForm({
     }
 
     setCurrentStep(1);
+    setErrors({ variants: [] });
   }, [
     product,
     categories,
@@ -706,11 +869,31 @@ export default function ProductForm({
     }
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Parent categories only
-  |--------------------------------------------------------------------------
-  */
+  async function loadAttributes() {
+    try {
+      setLoadingAttributes(true);
+
+      const response = await getAttribute();
+
+      if (!response?.success) {
+        setAttributes([]);
+        return;
+      }
+
+      setAttributes(
+        normalizeAttributes(response)
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load attributes:",
+        error
+      );
+
+      setAttributes([]);
+    } finally {
+      setLoadingAttributes(false);
+    }
+  }
 
   const parentCategories = useMemo(() => {
     return categories.filter(
@@ -719,11 +902,6 @@ export default function ProductForm({
     );
   }, [categories]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Selected parent
-  |--------------------------------------------------------------------------
-  */
 
   const selectedParentCategory =
     useMemo(() => {
@@ -741,12 +919,6 @@ export default function ProductForm({
       form.parentCategoryId,
     ]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Subcategories of selected parent
-  |--------------------------------------------------------------------------
-  */
-
   const subCategories = useMemo(() => {
     if (!selectedParentCategory) {
       return [];
@@ -759,11 +931,6 @@ export default function ProductForm({
       : [];
   }, [selectedParentCategory]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Selected subcategory
-  |--------------------------------------------------------------------------
-  */
 
   const selectedSubCategory =
     useMemo(() => {
@@ -781,24 +948,45 @@ export default function ProductForm({
       form.subCategoryId,
     ]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Generic change
-  |--------------------------------------------------------------------------
-  */
+
+  function clearFieldError(field) {
+    setErrors((previous) => {
+      if (!previous[field]) {
+        return previous;
+      }
+
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function clearVariantFieldError(index, field) {
+    setErrors((previous) => {
+      if (!previous.variants?.[index]?.[field]) {
+        return previous;
+      }
+
+      const variants = [...previous.variants];
+      const variantErrors = { ...variants[index] };
+      delete variantErrors[field];
+      variants[index] = variantErrors;
+
+      return {
+        ...previous,
+        variants,
+      };
+    });
+  }
 
   function handleChange(field, value) {
     setForm((previous) => ({
       ...previous,
       [field]: value,
     }));
-  }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Parent category change
-  |--------------------------------------------------------------------------
-  */
+    clearFieldError(field);
+  }
 
   function handleParentCategoryChange(
     value
@@ -810,6 +998,9 @@ export default function ProductForm({
         subCategoryId: "",
         categoryId: "",
       }));
+
+      clearFieldError("parentCategoryId");
+      clearFieldError("subCategoryId");
 
       return;
     }
@@ -826,28 +1017,19 @@ export default function ProductForm({
 
       parentCategoryId: value,
 
-      /*
-       * Important:
-       * Reset old subcategory when parent changes.
-       */
       subCategoryId: "",
 
-      /*
-       * Do not submit parent as category.
-       * The final categoryId will be the subcategory.
-       */
+
       categoryId:
         parent?.children?.length
           ? ""
           : value,
     }));
+
+    clearFieldError("parentCategoryId");
+    clearFieldError("subCategoryId");
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Subcategory change
-  |--------------------------------------------------------------------------
-  */
 
   function handleSubCategoryChange(
     value
@@ -873,6 +1055,8 @@ export default function ProductForm({
        */
       categoryId: value,
     }));
+
+    clearFieldError("subCategoryId");
   }
 
   function handleSeoChange(field, value) {
@@ -883,6 +1067,10 @@ export default function ProductForm({
         [field]: value,
       },
     }));
+
+    if (field === "canonical") {
+      clearFieldError("canonical");
+    }
   }
 
   function handleArrayChange(
@@ -946,6 +1134,8 @@ export default function ProductForm({
         variants,
       };
     });
+
+    clearVariantFieldError(index, field);
   }
 
   function addVariant() {
@@ -957,6 +1147,11 @@ export default function ProductForm({
           ...emptyVariant,
         },
       ],
+    }));
+
+    setErrors((previous) => ({
+      ...previous,
+      variants: [...(previous.variants || []), {}],
     }));
   }
 
@@ -975,6 +1170,13 @@ export default function ProductForm({
           ),
       };
     });
+
+    setErrors((previous) => ({
+      ...previous,
+      variants: (previous.variants || []).filter(
+        (_, itemIndex) => itemIndex !== index
+      ),
+    }));
   }
 
   function handleFeaturedImage(event) {
@@ -1145,12 +1347,33 @@ export default function ProductForm({
   }
 
   function nextStep() {
-    if (
-      currentStep === 1 &&
-      !form.name?.trim()
-    ) {
-      alert("Product name is required.");
-      return;
+    if (currentStep === 1) {
+      const basicErrors = validateBasicInfo(
+        form,
+        subCategories
+      );
+
+      if (Object.keys(basicErrors).length > 0) {
+        setErrors((previous) => ({
+          ...previous,
+          ...basicErrors,
+        }));
+        return;
+      }
+    }
+
+    if (currentStep === 3) {
+      const variantErrors = validateVariants(
+        form.variants
+      );
+
+      if (variantsHaveErrors(variantErrors)) {
+        setErrors((previous) => ({
+          ...previous,
+          variants: variantErrors,
+        }));
+        return;
+      }
     }
 
     if (currentStep < steps.length) {
@@ -1175,40 +1398,38 @@ export default function ProductForm({
   */
 
   function handleSubmit() {
-    if (!form.name?.trim()) {
-      setCurrentStep(1);
+    const basicErrors = validateBasicInfo(
+      form,
+      subCategories
+    );
 
-      alert("Product name is required.");
+    const variantErrors = validateVariants(
+      form.variants
+    );
 
-      return;
-    }
+    const seoErrors = validateSeo(form.seo);
 
-    /*
-     * Parent category is required
-     */
-    if (!form.parentCategoryId) {
-      setCurrentStep(1);
+    const hasErrors =
+      Object.keys(basicErrors).length > 0 ||
+      variantsHaveErrors(variantErrors) ||
+      Object.keys(seoErrors).length > 0;
 
-      alert(
-        "Please select a parent category."
+    if (hasErrors) {
+      setErrors({
+        ...basicErrors,
+        ...seoErrors,
+        variants: variantErrors,
+      });
+
+      const targetStep = stepForErrors(
+        basicErrors,
+        variantErrors,
+        seoErrors
       );
 
-      return;
-    }
-
-    /*
-     * If selected parent has subcategories,
-     * user MUST select one.
-     */
-    if (
-      subCategories.length > 0 &&
-      !form.subCategoryId
-    ) {
-      setCurrentStep(1);
-
-      alert(
-        "Please select a sub category."
-      );
+      if (targetStep) {
+        setCurrentStep(targetStep);
+      }
 
       return;
     }
@@ -1228,21 +1449,6 @@ export default function ProductForm({
       finalCategoryId
     );
 
-    if (
-      !Number.isInteger(
-        numericCategoryId
-      ) ||
-      numericCategoryId <= 0
-    ) {
-      setCurrentStep(1);
-
-      alert(
-        "Please select a valid category."
-      );
-
-      return;
-    }
-
     const payload = {
       ...(product?.id
         ? {
@@ -1255,11 +1461,6 @@ export default function ProductForm({
       slug: form.slug || "",
       sku: form.sku || "",
       description: form.description || "",
-
-      /*
-       * IMPORTANT:
-       * API receives the selected SUBCATEGORY ID.
-       */
       categoryId: numericCategoryId,
 
       brandId: toNumberOrNull(
@@ -1322,7 +1523,13 @@ export default function ProductForm({
           : {}),
 
         size: variant.size || "",
-        flavour: variant.flavour || "",
+
+        attributeId: toNumberOrNull(
+          variant.attributeId
+        ),
+
+        attributeValue:
+          variant.attributeValue || "",
 
         price: toNumberOrDefault(
           variant.price,
@@ -1343,7 +1550,7 @@ export default function ProductForm({
         weight: variant.weight || "",
         length: variant.length || "",
         height: variant.height || "",
-        breadth: variant.breadth || "",
+        wide: variant.wide || "",
 
         image:
           variant.image instanceof File
@@ -1357,16 +1564,6 @@ export default function ProductForm({
       })),
     };
 
-    console.log(
-      "FINAL CATEGORY ID:",
-      numericCategoryId
-    );
-
-    console.log(
-      "FINAL PRODUCT PAYLOAD:",
-      payload
-    );
-
     onSave(payload);
   }
 
@@ -1377,6 +1574,19 @@ export default function ProductForm({
       ),
     [currentStep]
   );
+
+  const stepHasError = useMemo(() => {
+    return {
+      1:
+        Boolean(errors.name) ||
+        Boolean(errors.slug) ||
+        Boolean(errors.parentCategoryId) ||
+        Boolean(errors.subCategoryId) ||
+        Boolean(errors.taxRate),
+      3: variantsHaveErrors(errors.variants),
+      6: Boolean(errors.canonical),
+    };
+  }, [errors]);
 
   /*
   |--------------------------------------------------------------------------
@@ -1436,7 +1646,13 @@ export default function ProductForm({
               }
               disabled={loadingCategories}
             >
-              <SelectTrigger className="h-11 bg-background">
+              <SelectTrigger
+                className={`h-11 bg-background ${
+                  errors.parentCategoryId
+                    ? "border-red-400 focus:ring-red-400"
+                    : ""
+                }`}
+              >
                 <SelectValue
                   placeholder={
                     loadingCategories
@@ -1493,6 +1709,8 @@ export default function ProductForm({
                 )}
               </SelectContent>
             </Select>
+
+            <FieldError message={errors.parentCategoryId} />
 
             {selectedParentCategory && (
               <div className="mt-3 flex items-center gap-3 rounded-xl border bg-background p-3">
@@ -1586,7 +1804,13 @@ export default function ProductForm({
                 subCategories.length === 0
               }
             >
-              <SelectTrigger className="h-11 bg-background">
+              <SelectTrigger
+                className={`h-11 bg-background ${
+                  errors.subCategoryId
+                    ? "border-red-400 focus:ring-red-400"
+                    : ""
+                }`}
+              >
                 <SelectValue
                   placeholder={
                     !form.parentCategoryId
@@ -1624,6 +1848,8 @@ export default function ProductForm({
                 )}
               </SelectContent>
             </Select>
+
+            <FieldError message={errors.subCategoryId} />
 
             {!form.parentCategoryId && (
               <p className="mt-2 text-xs text-muted-foreground">
@@ -1769,6 +1995,10 @@ export default function ProductForm({
               const completed =
                 currentStep > step.id;
 
+              const invalid = Boolean(
+                stepHasError[step.id]
+              );
+
               return (
                 <button
                   key={step.id}
@@ -1777,7 +2007,9 @@ export default function ProductForm({
                     goToStep(step.id)
                   }
                   className={`flex min-w-[145px] items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all sm:min-w-[155px] ${
-                    active
+                    invalid
+                      ? "border-red-300 bg-red-50"
+                      : active
                       ? "border-primary bg-primary/10 shadow-sm"
                       : completed
                       ? "border-primary/20 bg-primary/5 hover:border-primary/40"
@@ -1786,14 +2018,18 @@ export default function ProductForm({
                 >
                   <div
                     className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                      active
+                      invalid
+                        ? "bg-red-500 text-white"
+                        : active
                         ? "bg-primary text-primary-foreground"
                         : completed
                         ? "bg-primary/10 text-primary"
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
-                    {completed ? (
+                    {invalid ? (
+                      <AlertCircle size={17} />
+                    ) : completed ? (
                       <Check size={17} />
                     ) : (
                       <Icon size={17} />
@@ -1803,7 +2039,9 @@ export default function ProductForm({
                   <div className="min-w-0">
                     <p
                       className={`truncate text-xs font-semibold sm:text-sm ${
-                        active
+                        invalid
+                          ? "text-red-600"
+                          : active
                           ? "text-primary"
                           : ""
                       }`}
@@ -1812,12 +2050,60 @@ export default function ProductForm({
                     </p>
 
                     <p className="truncate text-[10px] text-muted-foreground sm:text-xs">
-                      {step.description}
+                      {invalid
+                        ? "Needs attention"
+                        : step.description}
                     </p>
                   </div>
                 </button>
               );
             })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderErrorSummary() {
+    const messages = [];
+
+    if (errors.name) messages.push(errors.name);
+    if (errors.slug) messages.push(errors.slug);
+    if (errors.parentCategoryId)
+      messages.push(errors.parentCategoryId);
+    if (errors.subCategoryId)
+      messages.push(errors.subCategoryId);
+    if (errors.taxRate) messages.push(errors.taxRate);
+    if (errors.canonical) messages.push(errors.canonical);
+
+    (errors.variants || []).forEach((variantErrors, index) => {
+      Object.values(variantErrors || {}).forEach((message) => {
+        messages.push(`Variant ${index + 1}: ${message}`);
+      });
+    });
+
+    if (!messages.length) {
+      return null;
+    }
+
+    return (
+      <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4">
+        <div className="flex items-start gap-2">
+          <AlertCircle
+            size={18}
+            className="mt-0.5 shrink-0 text-red-500"
+          />
+
+          <div>
+            <p className="text-sm font-semibold text-red-700">
+              Please fix the following before saving:
+            </p>
+
+            <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs text-red-600">
+              {messages.map((message, index) => (
+                <li key={index}>{message}</li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
@@ -1838,6 +2124,8 @@ export default function ProductForm({
           </p>
         </div>
 
+        {renderErrorSummary()}
+
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label>
@@ -1856,7 +2144,14 @@ export default function ProductForm({
                 )
               }
               placeholder="e.g. Test Product 5"
+              className={
+                errors.name
+                  ? "border-red-400 focus-visible:ring-red-400"
+                  : ""
+              }
             />
+
+            <FieldError message={errors.name} />
           </div>
 
           <div className="grid gap-2">
@@ -1886,7 +2181,14 @@ export default function ProductForm({
                 )
               }
               placeholder="product-slug"
+              className={
+                errors.slug
+                  ? "border-red-400 focus-visible:ring-red-400"
+                  : ""
+              }
             />
+
+            <FieldError message={errors.slug} />
           </div>
 
           <div className="grid gap-2">
@@ -1999,7 +2301,14 @@ export default function ProductForm({
                 )
               }
               placeholder="0"
+              className={
+                errors.taxRate
+                  ? "border-red-400 focus-visible:ring-red-400"
+                  : ""
+              }
             />
+
+            <FieldError message={errors.taxRate} />
           </div>
         </div>
       </div>
@@ -2234,6 +2543,8 @@ export default function ProductForm({
           </Button>
         </div>
 
+        {renderErrorSummary()}
+
         <div className="space-y-5">
           {form.variants.map(
             (variant, index) => {
@@ -2242,12 +2553,20 @@ export default function ProductForm({
                   variant.image
                 );
 
+              const variantErrors =
+                errors.variants?.[index] || {};
+
               return (
                 <div
                   key={
                     variant.id || index
                   }
-                  className="overflow-hidden rounded-2xl border bg-muted/20"
+                  className={`overflow-hidden rounded-2xl border bg-muted/20 ${
+                    Object.keys(variantErrors)
+                      .length > 0
+                      ? "border-red-300"
+                      : ""
+                  }`}
                 >
                   <div className="flex items-center justify-between border-b bg-background px-4 py-4 sm:px-5">
                     <div>
@@ -2302,28 +2621,100 @@ export default function ProductForm({
                       </div>
 
                       <div className="grid gap-2">
-                        <Label>Flavour</Label>
+                        <Label>Attribute</Label>
+
+                        <Select
+                          value={
+                            variant.attributeId
+                              ? String(
+                                  variant.attributeId
+                                )
+                              : "none"
+                          }
+                          onValueChange={(
+                            value
+                          ) =>
+                            handleVariantChange(
+                              index,
+                              "attributeId",
+                              value === "none"
+                                ? ""
+                                : value
+                            )
+                          }
+                          disabled={
+                            loadingAttributes
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                loadingAttributes
+                                  ? "Loading attributes..."
+                                  : "Select attribute"
+                              }
+                            />
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            <SelectItem value="none">
+                              Select attribute
+                            </SelectItem>
+
+                            {attributes.map(
+                              (attribute) => (
+                                <SelectItem
+                                  key={
+                                    attribute.id
+                                  }
+                                  value={String(
+                                    attribute.id
+                                  )}
+                                >
+                                  {
+                                    attribute.name
+                                  }
+                                </SelectItem>
+                              )
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label>
+                          Attribute Value
+                        </Label>
 
                         <Input
                           value={
-                            variant.flavour
+                            variant.attributeValue ??
+                            ""
                           }
                           onChange={(
                             event
                           ) =>
                             handleVariantChange(
                               index,
-                              "flavour",
+                              "attributeValue",
                               event.target
                                 .value
                             )
                           }
-                          placeholder="Unflavoured"
+                          placeholder="e.g. Chocolate"
+                          disabled={
+                            !variant.attributeId
+                          }
                         />
                       </div>
 
                       <div className="grid gap-2">
-                        <Label>Price</Label>
+                        <Label>
+                          Price{" "}
+                          <span className="text-red-500">
+                            *
+                          </span>
+                        </Label>
 
                         <Input
                           type="number"
@@ -2342,6 +2733,17 @@ export default function ProductForm({
                             )
                           }
                           placeholder="499"
+                          className={
+                            variantErrors.price
+                              ? "border-red-400 focus-visible:ring-red-400"
+                              : ""
+                          }
+                        />
+
+                        <FieldError
+                          message={
+                            variantErrors.price
+                          }
                         />
                       </div>
 
@@ -2367,12 +2769,26 @@ export default function ProductForm({
                             )
                           }
                           placeholder="399"
+                          className={
+                            variantErrors.discountedPrice
+                              ? "border-red-400 focus-visible:ring-red-400"
+                              : ""
+                          }
+                        />
+
+                        <FieldError
+                          message={
+                            variantErrors.discountedPrice
+                          }
                         />
                       </div>
 
                       <div className="grid gap-2">
                         <Label>
-                          Stock Quantity
+                          Stock Quantity{" "}
+                          <span className="text-red-500">
+                            *
+                          </span>
                         </Label>
 
                         <Input
@@ -2392,6 +2808,17 @@ export default function ProductForm({
                             )
                           }
                           placeholder="20"
+                          className={
+                            variantErrors.stockQuantity
+                              ? "border-red-400 focus-visible:ring-red-400"
+                              : ""
+                          }
+                        />
+
+                        <FieldError
+                          message={
+                            variantErrors.stockQuantity
+                          }
                         />
                       </div>
 
@@ -2472,12 +2899,12 @@ export default function ProductForm({
 
                         <div className="grid gap-2">
                           <Label>
-                            Breadth
+                            wide
                           </Label>
 
                           <Input
                             value={
-                              variant.breadth ??
+                              variant.wide ??
                               ""
                             }
                             onChange={(
@@ -2485,7 +2912,7 @@ export default function ProductForm({
                             ) =>
                               handleVariantChange(
                                 index,
-                                "breadth",
+                                "wide",
                                 event.target
                                   .value
                               )
@@ -2838,7 +3265,14 @@ export default function ProductForm({
                   event.target.value
                 )
               }
+              className={
+                errors.taxRate
+                  ? "border-red-400 focus-visible:ring-red-400"
+                  : ""
+              }
             />
+
+            <FieldError message={errors.taxRate} />
           </div>
         </div>
 
@@ -2891,6 +3325,8 @@ export default function ProductForm({
             engines.
           </p>
         </div>
+
+        {renderErrorSummary()}
 
         <div className="rounded-2xl border bg-muted/20 p-4 sm:p-6">
           <div className="space-y-5">
@@ -2955,7 +3391,14 @@ export default function ProductForm({
                   )
                 }
                 placeholder="https://example.com/product/..."
+                className={
+                  errors.canonical
+                    ? "border-red-400 focus-visible:ring-red-400"
+                    : ""
+                }
               />
+
+              <FieldError message={errors.canonical} />
             </div>
 
             <div className="grid gap-2">
@@ -3090,7 +3533,7 @@ export default function ProductForm({
           </div>
         </div>
 
-        <DialogFooter className="shrink-0 border-t bg-background px-4 py-3 sm:px-7 sm:py-4">
+        <DialogFooter className="shrink-0 border-t bg-background px-4 py-3 sm:px-7 sm:py-4 mb-1 sm:mr-0 mr-1">
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="hidden text-xs text-muted-foreground sm:block">
               {currentStep === steps.length

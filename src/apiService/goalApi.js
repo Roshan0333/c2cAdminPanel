@@ -1,18 +1,20 @@
 import axios from "axios";
 
-export const getBrands = async () => {
+const API_URL = process.env.NEXT_PUBLIC_BASE_URL;
+const token = sessionStorage.getItem("pm_admin_token");
+
+export const getGoals = async () => {
     try {
         const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/dashboard/all`,
+            `${API_URL}/api/goals`,
             {
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${sessionStorage.getItem("pm_admin_token")}`
+                    Authorization: `Bearer ${token}`
                 }
             }
         );
-
-        return response.data
+        return response.data;
     }
     catch (err) {
         if (err.response) {
@@ -32,18 +34,17 @@ export const getBrands = async () => {
     }
 }
 
-export const createBrand = async (brandData) => {
+export const createGoal = async (goalData) => {
     try {
-        const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/`,
-            brandData,
+        
+        const response = await axios.post(`${API_URL}/api/goals/`,
+            goalData,
             {
                 headers: {
                     "Content-Type": "multipart/form-data",
-                    Authorization: `Bearer ${sessionStorage.getItem("pm_admin_token")}`
+                    Authorization: `Bearer ${token}`
                 }
-            }
-        );
+            });
 
         return response.data
     }
@@ -65,19 +66,17 @@ export const createBrand = async (brandData) => {
     }
 }
 
-export const updateBrand = async (id, brandData) => {
+export const updateGoal = async (id, goalData) => {
     try {
 
-        const response = await axios.put(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/${id}`,
-            brandData,
+        const response = await axios.put(`${API_URL}/api/goals/${id}`,
+            goalData,
             {
                 headers: {
                     "Content-Type": "multipart/form-data",
-                    Authorization: `Bearer ${sessionStorage.getItem("pm_admin_token")}`
+                    Authorization: `Bearer ${token}`
                 }
-            }
-        );
+            });
 
         return response.data
     }
@@ -99,17 +98,16 @@ export const updateBrand = async (id, brandData) => {
     }
 }
 
-export const deleteBrand = async (id) => {
+export const deleteGoal = async (id) => {
     try {
-        const response = await axios.delete(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/${id}`,
+        const response = await axios.delete(`${API_URL}/api/goals/${id}`,
             {
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${sessionStorage.getItem("pm_admin_token")}`
+                    Authorization: `Bearer ${token}`
                 }
-            }
-        );
+            });
+
 
         return response.data
     }

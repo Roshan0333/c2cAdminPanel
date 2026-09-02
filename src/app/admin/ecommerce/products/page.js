@@ -269,7 +269,7 @@ export default function ProductsPage() {
 
         length: toStringOrNull(product.length),
         height: toStringOrNull(product.height),
-        wide: toStringOrNull(product.wide),
+
         weight: toStringOrNull(product.weight),
 
         variants: Array.isArray(product.variants)

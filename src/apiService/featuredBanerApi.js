@@ -1,9 +1,9 @@
 import axios from "axios";
 
-export const getBrands = async () => {
+export const getFeaturedBanner = async () => {
     try {
         const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/dashboard/all`,
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/featured-banners/dashboard/all`,
             {
                 headers: {
                     "Content-Type": "application/json",
@@ -12,6 +12,8 @@ export const getBrands = async () => {
             }
         );
 
+        console.log(response.data)
+
         return response.data
     }
     catch (err) {
@@ -32,11 +34,11 @@ export const getBrands = async () => {
     }
 }
 
-export const createBrand = async (brandData) => {
+export const createFeaturedBanner = async (featuredBannerData) => {
     try {
         const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/`,
-            brandData,
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/featured-banners`,
+            featuredBannerData,
             {
                 headers: {
                     "Content-Type": "multipart/form-data",
@@ -65,12 +67,12 @@ export const createBrand = async (brandData) => {
     }
 }
 
-export const updateBrand = async (id, brandData) => {
+export const updateFeaturedBanner = async (id, featuredBannerData) => {
     try {
 
         const response = await axios.put(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/${id}`,
-            brandData,
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/featured-banners/${id}`,
+            featuredBannerData,
             {
                 headers: {
                     "Content-Type": "multipart/form-data",
@@ -99,10 +101,10 @@ export const updateBrand = async (id, brandData) => {
     }
 }
 
-export const deleteBrand = async (id) => {
+export const deleteFeaturedBanner = async (id) => {
     try {
         const response = await axios.delete(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/${id}`,
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/featured-banners/${id}`,
             {
                 headers: {
                     "Content-Type": "application/json",

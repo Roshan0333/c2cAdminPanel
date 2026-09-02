@@ -6,7 +6,7 @@ const token = sessionStorage.getItem("pm_admin_token");
 export const getCategory = async () => {
     try {
         const response = await axios.get(
-            `${API_URL}/api/category`,
+            `${API_URL}/api/category/dashboard/all`,
             {
                 headers: {
                     "Content-Type": "application/json",
@@ -14,6 +14,9 @@ export const getCategory = async () => {
                 }
             }
         );
+
+        console.log(response.data)
+
         return response.data;
     }
     catch (err) {
