@@ -35,8 +35,10 @@ import {
   Search,
   Images,
   Layers3,
+  FolderTree,
 } from "lucide-react";
 import { getBrands } from "@/apiService/brandApi";
+import { getCategory } from "@/apiService/categoryApi";
 
 const emptyVariant = {
   size: "",
@@ -145,15 +147,10 @@ function toNumberOrNull(value) {
 
   const number = Number(value);
 
-  return Number.isNaN(number)
-    ? null
-    : number;
+  return Number.isNaN(number) ? null : number;
 }
 
-function toNumberOrDefault(
-  value,
-  fallback = 0
-) {
+function toNumberOrDefault(value, fallback = 0) {
   if (
     value === "" ||
     value === null ||
@@ -164,9 +161,7 @@ function toNumberOrDefault(
 
   const number = Number(value);
 
-  return Number.isNaN(number)
-    ? fallback
-    : number;
+  return Number.isNaN(number) ? fallback : number;
 }
 
 function normalizeArray(value) {
@@ -180,6 +175,31 @@ function normalizeArray(value) {
     value === ""
   ) {
     return [];
+  }
+
+  if (typeof value === "string") {
+    let current = value;
+
+    for (let i = 0; i < 6; i++) {
+      try {
+        const parsed = JSON.parse(current);
+
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+
+        if (typeof parsed === "string") {
+          current = parsed;
+          continue;
+        }
+
+        return [parsed];
+      } catch {
+        break;
+      }
+    }
+
+    return [value];
   }
 
   return [value];
@@ -203,23 +223,32 @@ function normalizeSeo(value) {
   }
 
   if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
+    let current = value;
 
-      if (
-        parsed &&
-        typeof parsed === "object" &&
-        !Array.isArray(parsed)
-      ) {
-        return {
-          ...emptyForm.seo,
-          ...parsed,
-        };
+    for (let i = 0; i < 6; i++) {
+      try {
+        const parsed = JSON.parse(current);
+
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          !Array.isArray(parsed)
+        ) {
+          return {
+            ...emptyForm.seo,
+            ...parsed,
+          };
+        }
+
+        if (typeof parsed === "string") {
+          current = parsed;
+          continue;
+        }
+
+        break;
+      } catch {
+        break;
       }
-    } catch {
-      return {
-        ...emptyForm.seo,
-      };
     }
   }
 
@@ -276,7 +305,123 @@ function normalizeVariant(variant) {
   };
 }
 
-function normalizeProduct(product) {
+function normalizeCategory(category) {
+  if (!category) {
+    return null;
+  }
+
+  return {
+    id: Number(category.id),
+    name: category.name || "",
+    slug: category.slug || "",
+    image: category.image || null,
+
+    parentId:
+      category.parentId === null ||
+      category.parentId === undefined
+        ? null
+        : Number(category.parentId),
+
+    createdAt: category.createdAt || null,
+
+    children: Array.isArray(category.children)
+      ? category.children
+          .map(normalizeCategory)
+          .filter(Boolean)
+      : [],
+  };
+}
+
+function normalizeCategoryResponse(response) {
+  const rawCategories =
+    response?.categories ||
+    response?.data?.categories ||
+    response?.data ||
+    [];
+
+  if (!Array.isArray(rawCategories)) {
+    return [];
+  }
+
+  return rawCategories
+    .map(normalizeCategory)
+    .filter(Boolean);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Find category recursively
+|--------------------------------------------------------------------------
+*/
+
+function findCategoryById(categories, id) {
+  if (!id) {
+    return null;
+  }
+
+  const numericId = Number(id);
+
+  for (const category of categories) {
+    if (Number(category.id) === numericId) {
+      return category;
+    }
+
+    if (
+      Array.isArray(category.children) &&
+      category.children.length
+    ) {
+      const found = findCategoryById(
+        category.children,
+        numericId
+      );
+
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Find parent category of a child
+|--------------------------------------------------------------------------
+*/
+
+function findParentCategory(
+  categories,
+  childId,
+  parent = null
+) {
+  const numericId = Number(childId);
+
+  for (const category of categories) {
+    if (Number(category.id) === numericId) {
+      return parent;
+    }
+
+    if (
+      Array.isArray(category.children) &&
+      category.children.length
+    ) {
+      const found = findParentCategory(
+        category.children,
+        childId,
+        category
+      );
+
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+}
+
+function normalizeProduct(product, categories = []) {
   if (!product) {
     return {
       ...emptyForm,
@@ -284,7 +429,54 @@ function normalizeProduct(product) {
       seo: {
         ...emptyForm.seo,
       },
+      parentCategoryId: "",
+      subCategoryId: "",
     };
+  }
+
+  const categoryId =
+    product.categoryId ??
+    product.category?.id ??
+    "";
+
+  const brandId =
+    product.brandId ??
+    product.brand?.id ??
+    "";
+
+  /*
+  |--------------------------------------------------------------------------
+  | Detect parent/subcategory while editing
+  |--------------------------------------------------------------------------
+  */
+
+  let parentCategoryId = "";
+  let subCategoryId = "";
+
+  if (categoryId) {
+    const selectedCategory = findCategoryById(
+      categories,
+      categoryId
+    );
+
+    if (selectedCategory) {
+      if (
+        selectedCategory.parentId !== null &&
+        selectedCategory.parentId !== undefined
+      ) {
+        subCategoryId = String(
+          selectedCategory.id
+        );
+
+        parentCategoryId = String(
+          selectedCategory.parentId
+        );
+      } else {
+        parentCategoryId = String(
+          selectedCategory.id
+        );
+      }
+    }
   }
 
   return {
@@ -292,15 +484,21 @@ function normalizeProduct(product) {
     ...product,
 
     categoryId:
-      product.categoryId !== null &&
-      product.categoryId !== undefined
-        ? String(product.categoryId)
+      categoryId !== null &&
+      categoryId !== undefined &&
+      categoryId !== ""
+        ? String(categoryId)
         : "",
 
+    parentCategoryId,
+
+    subCategoryId,
+
     brandId:
-      product.brandId !== null &&
-      product.brandId !== undefined
-        ? String(product.brandId)
+      brandId !== null &&
+      brandId !== undefined &&
+      brandId !== ""
+        ? String(brandId)
         : "",
 
     taxRate:
@@ -309,53 +507,43 @@ function normalizeProduct(product) {
         ? String(product.taxRate)
         : "0",
 
-    isFeatured: Boolean(
-      product.isFeatured
-    ),
-    isPopular: Boolean(
-      product.isPopular
-    ),
-    isRecent: Boolean(
-      product.isRecent
-    ),
-    isTopRated: Boolean(
-      product.isTopRated
-    ),
-    isTrending: Boolean(
-      product.isTrending
-    ),
+    isFeatured: Boolean(product.isFeatured),
+    isPopular: Boolean(product.isPopular),
+    isRecent: Boolean(product.isRecent),
+    isTopRated: Boolean(product.isTopRated),
+    isTrending: Boolean(product.isTrending),
 
     featuredimg:
       product.featuredimg || null,
 
-    images: normalizeImages(
-      product.images
-    ),
+    images: normalizeImages(product.images),
 
     variants:
       Array.isArray(product.variants) &&
       product.variants.length
-        ? product.variants.map(
-            normalizeVariant
-          )
+        ? product.variants.map(normalizeVariant)
         : [{ ...emptyVariant }],
 
     keyBenefits: normalizeArray(
       product.keyBenefits
     ),
+
     howToUse: normalizeArray(
       product.howToUse
     ),
-    safetyInformation:
-      normalizeArray(
-        product.safetyInformation
-      ),
+
+    safetyInformation: normalizeArray(
+      product.safetyInformation
+    ),
+
     whatToAvoid: normalizeArray(
       product.whatToAvoid
     ),
+
     whoShouldUse: normalizeArray(
       product.whoShouldUse
     ),
+
     whychooseus: normalizeArray(
       product.whychooseus
     ),
@@ -364,9 +552,7 @@ function normalizeProduct(product) {
       ? product.faqs
       : [],
 
-    tags: normalizeArray(
-      product.tags
-    ),
+    tags: normalizeArray(product.tags),
 
     seo: normalizeSeo(product.seo),
 
@@ -396,42 +582,88 @@ export default function ProductForm({
   onSave,
   saving,
 }) {
-  const [form, setForm] =
-    useState(emptyForm);
+  const [form, setForm] = useState({
+    ...emptyForm,
+    parentCategoryId: "",
+    subCategoryId: "",
+  });
 
-  const [brands, setBrands] =
+  const [brands, setBrands] = useState([]);
+  const [categories, setCategories] =
     useState([]);
 
   const [loadingBrands, setLoadingBrands] =
     useState(false);
 
+  const [loadingCategories, setLoadingCategories] =
+    useState(false);
+
   const [currentStep, setCurrentStep] =
     useState(1);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Load data
+  |--------------------------------------------------------------------------
+  */
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    setForm(
-      normalizeProduct(product)
-    );
+    loadBrands();
+    loadCategories();
+  }, [open]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Set product after categories are loaded
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    if (product && categories.length > 0) {
+      setForm(
+        normalizeProduct(
+          product,
+          categories
+        )
+      );
+    } else if (!product) {
+      setForm({
+        ...emptyForm,
+        variants: [{ ...emptyVariant }],
+        seo: {
+          ...emptyForm.seo,
+        },
+        parentCategoryId: "",
+        subCategoryId: "",
+      });
+    }
 
     setCurrentStep(1);
-
-    loadBrands();
-  }, [product, open]);
+  }, [
+    product,
+    categories,
+    open,
+  ]);
 
   async function loadBrands() {
     try {
       setLoadingBrands(true);
 
-      const response =
-        await getBrands();
+      const response = await getBrands();
 
       if (response?.success) {
         setBrands(
-          response.brands || []
+          Array.isArray(response.brands)
+            ? response.brands
+            : []
         );
       } else {
         setBrands([]);
@@ -448,20 +680,202 @@ export default function ProductForm({
     }
   }
 
-  function handleChange(
-    field,
-    value
-  ) {
+  async function loadCategories() {
+    try {
+      setLoadingCategories(true);
+
+      const response = await getCategory();
+
+      if (!response?.success) {
+        setCategories([]);
+        return;
+      }
+
+      setCategories(
+        normalizeCategoryResponse(response)
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load categories:",
+        error
+      );
+
+      setCategories([]);
+    } finally {
+      setLoadingCategories(false);
+    }
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Parent categories only
+  |--------------------------------------------------------------------------
+  */
+
+  const parentCategories = useMemo(() => {
+    return categories.filter(
+      (category) =>
+        category.parentId === null
+    );
+  }, [categories]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Selected parent
+  |--------------------------------------------------------------------------
+  */
+
+  const selectedParentCategory =
+    useMemo(() => {
+      if (!form.parentCategoryId) {
+        return null;
+      }
+
+      return parentCategories.find(
+        (category) =>
+          Number(category.id) ===
+          Number(form.parentCategoryId)
+      );
+    }, [
+      parentCategories,
+      form.parentCategoryId,
+    ]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Subcategories of selected parent
+  |--------------------------------------------------------------------------
+  */
+
+  const subCategories = useMemo(() => {
+    if (!selectedParentCategory) {
+      return [];
+    }
+
+    return Array.isArray(
+      selectedParentCategory.children
+    )
+      ? selectedParentCategory.children
+      : [];
+  }, [selectedParentCategory]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Selected subcategory
+  |--------------------------------------------------------------------------
+  */
+
+  const selectedSubCategory =
+    useMemo(() => {
+      if (!form.subCategoryId) {
+        return null;
+      }
+
+      return subCategories.find(
+        (category) =>
+          Number(category.id) ===
+          Number(form.subCategoryId)
+      );
+    }, [
+      subCategories,
+      form.subCategoryId,
+    ]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Generic change
+  |--------------------------------------------------------------------------
+  */
+
+  function handleChange(field, value) {
     setForm((previous) => ({
       ...previous,
       [field]: value,
     }));
   }
 
-  function handleSeoChange(
-    field,
+  /*
+  |--------------------------------------------------------------------------
+  | Parent category change
+  |--------------------------------------------------------------------------
+  */
+
+  function handleParentCategoryChange(
     value
   ) {
+    if (value === "none") {
+      setForm((previous) => ({
+        ...previous,
+        parentCategoryId: "",
+        subCategoryId: "",
+        categoryId: "",
+      }));
+
+      return;
+    }
+
+    const parent =
+      parentCategories.find(
+        (category) =>
+          Number(category.id) ===
+          Number(value)
+      );
+
+    setForm((previous) => ({
+      ...previous,
+
+      parentCategoryId: value,
+
+      /*
+       * Important:
+       * Reset old subcategory when parent changes.
+       */
+      subCategoryId: "",
+
+      /*
+       * Do not submit parent as category.
+       * The final categoryId will be the subcategory.
+       */
+      categoryId:
+        parent?.children?.length
+          ? ""
+          : value,
+    }));
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Subcategory change
+  |--------------------------------------------------------------------------
+  */
+
+  function handleSubCategoryChange(
+    value
+  ) {
+    if (value === "none") {
+      setForm((previous) => ({
+        ...previous,
+        subCategoryId: "",
+        categoryId: "",
+      }));
+
+      return;
+    }
+
+    setForm((previous) => ({
+      ...previous,
+
+      subCategoryId: value,
+
+      /*
+       * FINAL CATEGORY ID
+       * This is what goes to your API.
+       */
+      categoryId: value,
+    }));
+  }
+
+  function handleSeoChange(field, value) {
     setForm((previous) => ({
       ...previous,
       seo: {
@@ -500,10 +914,7 @@ export default function ProductForm({
     }));
   }
 
-  function removeArrayItem(
-    field,
-    index
-  ) {
+  function removeArrayItem(field, index) {
     setForm((previous) => ({
       ...previous,
       [field]: (
@@ -551,9 +962,7 @@ export default function ProductForm({
 
   function removeVariant(index) {
     setForm((previous) => {
-      if (
-        previous.variants.length <= 1
-      ) {
+      if (previous.variants.length <= 1) {
         return previous;
       }
 
@@ -568,13 +977,23 @@ export default function ProductForm({
     });
   }
 
-  function handleFeaturedImage(
-    event
-  ) {
+  function handleFeaturedImage(event) {
     const file =
       event.target.files?.[0];
 
     if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be less than 5MB.");
+      event.target.value = "";
       return;
     }
 
@@ -593,9 +1012,7 @@ export default function ProductForm({
     }));
   }
 
-  function handleGalleryImages(
-    event
-  ) {
+  function handleGalleryImages(event) {
     const files = Array.from(
       event.target.files || []
     );
@@ -604,20 +1021,40 @@ export default function ProductForm({
       return;
     }
 
+    const validFiles = files.filter(
+      (file) => {
+        if (!file.type.startsWith("image/")) {
+          return false;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          return false;
+        }
+
+        return true;
+      }
+    );
+
+    if (!validFiles.length) {
+      alert(
+        "Please select valid images under 5MB."
+      );
+      event.target.value = "";
+      return;
+    }
+
     setForm((previous) => ({
       ...previous,
       images: [
         ...(previous.images || []),
-        ...files,
+        ...validFiles,
       ],
     }));
 
     event.target.value = "";
   }
 
-  function removeGalleryImage(
-    index
-  ) {
+  function removeGalleryImage(index) {
     setForm((previous) => ({
       ...previous,
       images: (
@@ -637,6 +1074,18 @@ export default function ProductForm({
       event.target.files?.[0];
 
     if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be less than 5MB.");
+      event.target.value = "";
       return;
     }
 
@@ -660,9 +1109,7 @@ export default function ProductForm({
     event.target.value = "";
   }
 
-  function removeVariantImage(
-    index
-  ) {
+  function removeVariantImage(index) {
     setForm((previous) => {
       const variants = [
         ...previous.variants,
@@ -702,18 +1149,13 @@ export default function ProductForm({
       currentStep === 1 &&
       !form.name?.trim()
     ) {
-      alert(
-        "Product name is required."
-      );
+      alert("Product name is required.");
       return;
     }
 
-    if (
-      currentStep < steps.length
-    ) {
+    if (currentStep < steps.length) {
       setCurrentStep(
-        (previous) =>
-          previous + 1
+        (previous) => previous + 1
       );
     }
   }
@@ -721,18 +1163,81 @@ export default function ProductForm({
   function previousStep() {
     if (currentStep > 1) {
       setCurrentStep(
-        (previous) =>
-          previous - 1
+        (previous) => previous - 1
       );
     }
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Submit
+  |--------------------------------------------------------------------------
+  */
 
   function handleSubmit() {
     if (!form.name?.trim()) {
       setCurrentStep(1);
 
+      alert("Product name is required.");
+
+      return;
+    }
+
+    /*
+     * Parent category is required
+     */
+    if (!form.parentCategoryId) {
+      setCurrentStep(1);
+
       alert(
-        "Product name is required."
+        "Please select a parent category."
+      );
+
+      return;
+    }
+
+    /*
+     * If selected parent has subcategories,
+     * user MUST select one.
+     */
+    if (
+      subCategories.length > 0 &&
+      !form.subCategoryId
+    ) {
+      setCurrentStep(1);
+
+      alert(
+        "Please select a sub category."
+      );
+
+      return;
+    }
+
+    /*
+     * Final category ID:
+     *
+     * If subcategory exists -> subcategory ID
+     * If parent has no children -> parent ID
+     */
+    const finalCategoryId =
+      form.subCategoryId ||
+      form.categoryId ||
+      form.parentCategoryId;
+
+    const numericCategoryId = Number(
+      finalCategoryId
+    );
+
+    if (
+      !Number.isInteger(
+        numericCategoryId
+      ) ||
+      numericCategoryId <= 0
+    ) {
+      setCurrentStep(1);
+
+      alert(
+        "Please select a valid category."
       );
 
       return;
@@ -749,19 +1254,19 @@ export default function ProductForm({
       title: form.title || "",
       slug: form.slug || "",
       sku: form.sku || "",
-      description:
-        form.description || "",
+      description: form.description || "",
 
-      categoryId: toNumberOrNull(
-        form.categoryId
-      ),
+      /*
+       * IMPORTANT:
+       * API receives the selected SUBCATEGORY ID.
+       */
+      categoryId: numericCategoryId,
 
       brandId: toNumberOrNull(
         form.brandId
       ),
 
-      status:
-        form.status || "active",
+      status: form.status || "active",
 
       taxRate:
         form.taxRate === "" ||
@@ -770,31 +1275,15 @@ export default function ProductForm({
           ? "0"
           : String(form.taxRate),
 
-      isFeatured: Boolean(
-        form.isFeatured
-      ),
+      isFeatured: Boolean(form.isFeatured),
+      isPopular: Boolean(form.isPopular),
+      isRecent: Boolean(form.isRecent),
+      isTopRated: Boolean(form.isTopRated),
+      isTrending: Boolean(form.isTrending),
 
-      isPopular: Boolean(
-        form.isPopular
-      ),
+      featuredimg: form.featuredimg,
 
-      isRecent: Boolean(
-        form.isRecent
-      ),
-
-      isTopRated: Boolean(
-        form.isTopRated
-      ),
-
-      isTrending: Boolean(
-        form.isTrending
-      ),
-
-      featuredimg:
-        form.featuredimg,
-
-      images:
-        form.images || [],
+      images: form.images || [],
 
       keyBenefits:
         form.keyBenefits || [],
@@ -803,8 +1292,7 @@ export default function ProductForm({
         form.howToUse || [],
 
       safetyInformation:
-        form.safetyInformation ||
-        [],
+        form.safetyInformation || [],
 
       whatToAvoid:
         form.whatToAvoid || [],
@@ -834,8 +1322,7 @@ export default function ProductForm({
           : {}),
 
         size: variant.size || "",
-        flavour:
-          variant.flavour || "",
+        flavour: variant.flavour || "",
 
         price: toNumberOrDefault(
           variant.price,
@@ -853,31 +1340,32 @@ export default function ProductForm({
             0
           ),
 
-        weight:
-          variant.weight || "",
-
-        length:
-          variant.length || "",
-
-        height:
-          variant.height || "",
-
-        breadth:
-          variant.breadth || "",
+        weight: variant.weight || "",
+        length: variant.length || "",
+        height: variant.height || "",
+        breadth: variant.breadth || "",
 
         image:
-          variant.image instanceof
-          File
+          variant.image instanceof File
             ? null
             : variant.image || null,
 
         imageFile:
-          variant.imageFile instanceof
-          File
+          variant.imageFile instanceof File
             ? variant.imageFile
             : null,
       })),
     };
+
+    console.log(
+      "FINAL CATEGORY ID:",
+      numericCategoryId
+    );
+
+    console.log(
+      "FINAL PRODUCT PAYLOAD:",
+      payload
+    );
 
     onSave(payload);
   }
@@ -885,12 +1373,361 @@ export default function ProductForm({
   const progress = useMemo(
     () =>
       Math.round(
-        (currentStep /
-          steps.length) *
-          100
+        (currentStep / steps.length) * 100
       ),
     [currentStep]
   );
+
+  /*
+  |--------------------------------------------------------------------------
+  | Category UI
+  |--------------------------------------------------------------------------
+  */
+
+  function renderCategorySelection() {
+    return (
+      <div className="space-y-4 sm:col-span-2">
+        <div className="flex items-center gap-2">
+          <FolderTree
+            size={17}
+            className="text-primary"
+          />
+
+          <Label className="text-sm font-semibold">
+            Category
+          </Label>
+
+          <span className="text-red-500">
+            *
+          </span>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* ------------------------------------------------------------- */}
+          {/* STEP 1 - PARENT CATEGORY */}
+          {/* ------------------------------------------------------------- */}
+
+          <div className="rounded-2xl border bg-muted/20 p-4">
+            <div className="mb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  1
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold">
+                    Parent Category
+                  </p>
+
+                  <p className="text-xs text-muted-foreground">
+                    Select the main category
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Select
+              value={
+                form.parentCategoryId ||
+                "none"
+              }
+              onValueChange={
+                handleParentCategoryChange
+              }
+              disabled={loadingCategories}
+            >
+              <SelectTrigger className="h-11 bg-background">
+                <SelectValue
+                  placeholder={
+                    loadingCategories
+                      ? "Loading categories..."
+                      : "Select parent category"
+                  }
+                />
+              </SelectTrigger>
+
+              <SelectContent className="max-h-[320px]">
+                <SelectItem value="none">
+                  Select parent category
+                </SelectItem>
+
+                {parentCategories.length ===
+                0 ? (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    No parent categories found
+                  </div>
+                ) : (
+                  parentCategories.map(
+                    (category) => (
+                      <SelectItem
+                        key={category.id}
+                        value={String(
+                          category.id
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <FolderTree
+                            size={14}
+                            className="text-primary"
+                          />
+
+                          {category.name}
+
+                          {category.children
+                            ?.length >
+                            0 && (
+                            <span className="text-xs text-muted-foreground">
+                              (
+                              {
+                                category
+                                  .children
+                                  .length
+                              }{" "}
+                              sub)
+                            </span>
+                          )}
+                        </span>
+                      </SelectItem>
+                    )
+                  )
+                )}
+              </SelectContent>
+            </Select>
+
+            {selectedParentCategory && (
+              <div className="mt-3 flex items-center gap-3 rounded-xl border bg-background p-3">
+                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border">
+                  {selectedParentCategory.image ? (
+                    <img
+                      src={
+                        selectedParentCategory.image
+                      }
+                      alt={
+                        selectedParentCategory.name
+                      }
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-muted">
+                      <FolderTree
+                        size={16}
+                        className="text-muted-foreground"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-[11px] text-muted-foreground">
+                    Parent selected
+                  </p>
+
+                  <p className="truncate text-sm font-semibold">
+                    {
+                      selectedParentCategory.name
+                    }
+                  </p>
+                </div>
+
+                <Check
+                  size={17}
+                  className="ml-auto shrink-0 text-green-500"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* ------------------------------------------------------------- */}
+          {/* STEP 2 - SUB CATEGORY */}
+          {/* ------------------------------------------------------------- */}
+
+          <div
+            className={`rounded-2xl border p-4 transition ${
+              form.parentCategoryId
+                ? "bg-muted/20"
+                : "bg-muted/10 opacity-60"
+            }`}
+          >
+            <div className="mb-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                    form.parentCategoryId
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  2
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold">
+                    Sub Category
+                  </p>
+
+                  <p className="text-xs text-muted-foreground">
+                    Select the child category
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Select
+              value={
+                form.subCategoryId ||
+                "none"
+              }
+              onValueChange={
+                handleSubCategoryChange
+              }
+              disabled={
+                !form.parentCategoryId ||
+                loadingCategories ||
+                subCategories.length === 0
+              }
+            >
+              <SelectTrigger className="h-11 bg-background">
+                <SelectValue
+                  placeholder={
+                    !form.parentCategoryId
+                      ? "Select parent first"
+                      : subCategories.length ===
+                        0
+                      ? "No subcategories"
+                      : "Select sub category"
+                  }
+                />
+              </SelectTrigger>
+
+              <SelectContent className="max-h-[320px]">
+                <SelectItem value="none">
+                  Select sub category
+                </SelectItem>
+
+                {subCategories.map(
+                  (category) => (
+                    <SelectItem
+                      key={category.id}
+                      value={String(
+                        category.id
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-muted-foreground">
+                          └
+                        </span>
+
+                        {category.name}
+                      </span>
+                    </SelectItem>
+                  )
+                )}
+              </SelectContent>
+            </Select>
+
+            {!form.parentCategoryId && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                First select a parent category.
+              </p>
+            )}
+
+            {form.parentCategoryId &&
+              subCategories.length ===
+                0 && (
+                <p className="mt-2 text-xs text-amber-600">
+                  This parent category has no
+                  subcategories, so the parent
+                  category will be used.
+                </p>
+              )}
+
+            {selectedSubCategory && (
+              <div className="mt-3 flex items-center gap-3 rounded-xl border bg-background p-3">
+                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border">
+                  {selectedSubCategory.image ? (
+                    <img
+                      src={
+                        selectedSubCategory.image
+                      }
+                      alt={
+                        selectedSubCategory.name
+                      }
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-muted">
+                      <FolderTree
+                        size={16}
+                        className="text-muted-foreground"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-[11px] text-muted-foreground">
+                    Sub category selected
+                  </p>
+
+                  <p className="truncate text-sm font-semibold">
+                    {
+                      selectedSubCategory.name
+                    }
+                  </p>
+
+                  <p className="truncate text-xs text-muted-foreground">
+                    {
+                      selectedParentCategory?.name
+                    }{" "}
+                    →{" "}
+                    {
+                      selectedSubCategory.name
+                    }
+                  </p>
+                </div>
+
+                <Check
+                  size={17}
+                  className="ml-auto shrink-0 text-green-500"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Final selection */}
+        {(selectedParentCategory ||
+          selectedSubCategory) && (
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  Final Product Category
+                </p>
+
+                <p className="mt-1 text-sm font-semibold">
+                  {selectedSubCategory
+                    ? `${selectedParentCategory?.name} → ${selectedSubCategory.name}`
+                    : selectedParentCategory?.name}
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-background px-3 py-2 text-xs">
+                <span className="text-muted-foreground">
+                  Category ID:{" "}
+                </span>
+
+                <span className="font-semibold">
+                  {form.categoryId ||
+                    form.parentCategoryId}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   function renderStepIndicator() {
     return (
@@ -927,21 +1764,17 @@ export default function ProductForm({
               const Icon = step.icon;
 
               const active =
-                currentStep ===
-                step.id;
+                currentStep === step.id;
 
               const completed =
-                currentStep >
-                step.id;
+                currentStep > step.id;
 
               return (
                 <button
                   key={step.id}
                   type="button"
                   onClick={() =>
-                    goToStep(
-                      step.id
-                    )
+                    goToStep(step.id)
                   }
                   className={`flex min-w-[145px] items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all sm:min-w-[155px] ${
                     active
@@ -961,13 +1794,9 @@ export default function ProductForm({
                     }`}
                   >
                     {completed ? (
-                      <Check
-                        size={17}
-                      />
+                      <Check size={17} />
                     ) : (
-                      <Icon
-                        size={17}
-                      />
+                      <Icon size={17} />
                     )}
                   </div>
 
@@ -983,9 +1812,7 @@ export default function ProductForm({
                     </p>
 
                     <p className="truncate text-[10px] text-muted-foreground sm:text-xs">
-                      {
-                        step.description
-                      }
+                      {step.description}
                     </p>
                   </div>
                 </button>
@@ -1006,8 +1833,8 @@ export default function ProductForm({
           </h3>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Add the primary information
-            for your product.
+            Add the primary information for
+            your product.
           </p>
         </div>
 
@@ -1025,8 +1852,7 @@ export default function ProductForm({
               onChange={(event) =>
                 handleChange(
                   "name",
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
               placeholder="e.g. Test Product 5"
@@ -1034,17 +1860,14 @@ export default function ProductForm({
           </div>
 
           <div className="grid gap-2">
-            <Label>
-              Product Title
-            </Label>
+            <Label>Product Title</Label>
 
             <Input
               value={form.title}
               onChange={(event) =>
                 handleChange(
                   "title",
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
               placeholder="Product title"
@@ -1059,8 +1882,7 @@ export default function ProductForm({
               onChange={(event) =>
                 handleChange(
                   "slug",
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
               placeholder="product-slug"
@@ -1075,54 +1897,31 @@ export default function ProductForm({
               onChange={(event) =>
                 handleChange(
                   "sku",
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
               placeholder="SKU-001"
             />
           </div>
 
-          <div className="grid gap-2">
-            <Label>
-              Category ID
-            </Label>
+          {renderCategorySelection()}
 
-            <Input
-              type="number"
-              value={
-                form.categoryId
-              }
-              onChange={(event) =>
-                handleChange(
-                  "categoryId",
-                  event.target
-                    .value
-                )
-              }
-              placeholder="1"
-            />
-          </div>
-
-          <div className="grid gap-2">
+          <div className="grid gap-2 sm:col-span-2">
             <Label>Brand</Label>
 
             <Select
               value={
-                form.brandId ||
-                "none"
+                form.brandId || "none"
               }
-              onValueChange={(
-                value
-              ) =>
+              onValueChange={(value) =>
                 handleChange(
                   "brandId",
-                  value ===
-                    "none"
+                  value === "none"
                     ? ""
                     : value
                 )
               }
+              disabled={loadingBrands}
             >
               <SelectTrigger>
                 <SelectValue
@@ -1139,41 +1938,30 @@ export default function ProductForm({
                   No Brand
                 </SelectItem>
 
-                {brands.map(
-                  (brand) => (
-                    <SelectItem
-                      key={
-                        brand.id
-                      }
-                      value={String(
-                        brand.id
-                      )}
-                    >
-                      {
-                        brand.name
-                      }
-                    </SelectItem>
-                  )
-                )}
+                {brands.map((brand) => (
+                  <SelectItem
+                    key={brand.id}
+                    value={String(
+                      brand.id
+                    )}
+                  >
+                    {brand.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <div className="grid gap-2">
-          <Label>
-            Description
-          </Label>
+          <Label>Description</Label>
 
           <Textarea
-            value={
-              form.description
-            }
+            value={form.description}
             onChange={(event) =>
               handleChange(
                 "description",
-                event.target
-                  .value
+                event.target.value
               )
             }
             placeholder="Write a detailed product description..."
@@ -1184,17 +1972,14 @@ export default function ProductForm({
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label>
-              HSN Code
-            </Label>
+            <Label>HSN Code</Label>
 
             <Input
               value={form.hsnCode}
               onChange={(event) =>
                 handleChange(
                   "hsnCode",
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
               placeholder="HSN code"
@@ -1202,9 +1987,7 @@ export default function ProductForm({
           </div>
 
           <div className="grid gap-2">
-            <Label>
-              Tax Rate (%)
-            </Label>
+            <Label>Tax Rate (%)</Label>
 
             <Input
               type="number"
@@ -1212,8 +1995,7 @@ export default function ProductForm({
               onChange={(event) =>
                 handleChange(
                   "taxRate",
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
               placeholder="0"
@@ -1226,9 +2008,7 @@ export default function ProductForm({
 
   function renderImages() {
     const featuredPreview =
-      getImagePreview(
-        form.featuredimg
-      );
+      getImagePreview(form.featuredimg);
 
     return (
       <div className="space-y-6">
@@ -1238,8 +2018,8 @@ export default function ProductForm({
           </h3>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Add your main product image
-            and gallery images.
+            Add your main product image and
+            gallery images.
           </p>
         </div>
 
@@ -1250,9 +2030,8 @@ export default function ProductForm({
             </h4>
 
             <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-              The main image shown on
-              product cards and product
-              pages.
+              The main image shown on product
+              cards and product pages.
             </p>
           </div>
 
@@ -1260,9 +2039,7 @@ export default function ProductForm({
             {featuredPreview ? (
               <div className="relative w-fit">
                 <img
-                  src={
-                    featuredPreview
-                  }
+                  src={featuredPreview}
                   alt="Featured product"
                   className="h-36 w-36 rounded-2xl border bg-background object-cover shadow-sm sm:h-44 sm:w-44"
                 />
@@ -1332,8 +2109,8 @@ export default function ProductForm({
               </h4>
 
               <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                Upload multiple images
-                for the product gallery.
+                Upload multiple images for
+                the product gallery.
               </p>
             </div>
 
@@ -1364,8 +2141,7 @@ export default function ProductForm({
             </p>
 
             <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-              Select multiple images at
-              once
+              Select multiple images at once
             </p>
 
             <input
@@ -1379,18 +2155,12 @@ export default function ProductForm({
             />
           </label>
 
-          {form.images?.length >
-            0 && (
+          {form.images?.length > 0 && (
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {form.images.map(
-                (
-                  image,
-                  index
-                ) => {
+                (image, index) => {
                   const preview =
-                    getImagePreview(
-                      image
-                    );
+                    getImagePreview(image);
 
                   return (
                     <div
@@ -1399,12 +2169,9 @@ export default function ProductForm({
                     >
                       {preview && (
                         <img
-                          src={
-                            preview
-                          }
+                          src={preview}
                           alt={`Product image ${
-                            index +
-                            1
+                            index + 1
                           }`}
                           className="aspect-square w-full object-cover"
                         />
@@ -1412,9 +2179,7 @@ export default function ProductForm({
 
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-8">
                         <span className="text-xs font-semibold text-white">
-                          Image{" "}
-                          {index +
-                            1}
+                          Image {index + 1}
                         </span>
                       </div>
 
@@ -1471,10 +2236,7 @@ export default function ProductForm({
 
         <div className="space-y-5">
           {form.variants.map(
-            (
-              variant,
-              index
-            ) => {
+            (variant, index) => {
               const preview =
                 getImagePreview(
                   variant.image
@@ -1483,17 +2245,14 @@ export default function ProductForm({
               return (
                 <div
                   key={
-                    variant.id ||
-                    index
+                    variant.id || index
                   }
                   className="overflow-hidden rounded-2xl border bg-muted/20"
                 >
                   <div className="flex items-center justify-between border-b bg-background px-4 py-4 sm:px-5">
                     <div>
                       <p className="font-semibold">
-                        Variant{" "}
-                        {index +
-                          1}
+                        Variant {index + 1}
                       </p>
 
                       <p className="text-xs text-muted-foreground">
@@ -1501,9 +2260,7 @@ export default function ProductForm({
                       </p>
                     </div>
 
-                    {form
-                      .variants
-                      .length >
+                    {form.variants.length >
                       1 && (
                       <Button
                         type="button"
@@ -1516,11 +2273,7 @@ export default function ProductForm({
                         }
                         className="text-red-500 hover:bg-red-50 hover:text-red-600"
                       >
-                        <Trash2
-                          size={
-                            17
-                          }
-                        />
+                        <Trash2 size={17} />
                       </Button>
                     )}
                   </div>
@@ -1528,9 +2281,7 @@ export default function ProductForm({
                   <div className="space-y-6 p-4 sm:p-5">
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       <div className="grid gap-2">
-                        <Label>
-                          Size
-                        </Label>
+                        <Label>Size</Label>
 
                         <Input
                           value={
@@ -1542,8 +2293,7 @@ export default function ProductForm({
                             handleVariantChange(
                               index,
                               "size",
-                              event
-                                .target
+                              event.target
                                 .value
                             )
                           }
@@ -1552,9 +2302,7 @@ export default function ProductForm({
                       </div>
 
                       <div className="grid gap-2">
-                        <Label>
-                          Flavour
-                        </Label>
+                        <Label>Flavour</Label>
 
                         <Input
                           value={
@@ -1566,8 +2314,7 @@ export default function ProductForm({
                             handleVariantChange(
                               index,
                               "flavour",
-                              event
-                                .target
+                              event.target
                                 .value
                             )
                           }
@@ -1576,9 +2323,7 @@ export default function ProductForm({
                       </div>
 
                       <div className="grid gap-2">
-                        <Label>
-                          Price
-                        </Label>
+                        <Label>Price</Label>
 
                         <Input
                           type="number"
@@ -1592,8 +2337,7 @@ export default function ProductForm({
                             handleVariantChange(
                               index,
                               "price",
-                              event
-                                .target
+                              event.target
                                 .value
                             )
                           }
@@ -1618,8 +2362,7 @@ export default function ProductForm({
                             handleVariantChange(
                               index,
                               "discountedPrice",
-                              event
-                                .target
+                              event.target
                                 .value
                             )
                           }
@@ -1644,8 +2387,7 @@ export default function ProductForm({
                             handleVariantChange(
                               index,
                               "stockQuantity",
-                              event
-                                .target
+                              event.target
                                 .value
                             )
                           }
@@ -1654,9 +2396,7 @@ export default function ProductForm({
                       </div>
 
                       <div className="grid gap-2">
-                        <Label>
-                          Weight
-                        </Label>
+                        <Label>Weight</Label>
 
                         <Input
                           value={
@@ -1669,8 +2409,7 @@ export default function ProductForm({
                             handleVariantChange(
                               index,
                               "weight",
-                              event
-                                .target
+                              event.target
                                 .value
                             )
                           }
@@ -1701,8 +2440,7 @@ export default function ProductForm({
                               handleVariantChange(
                                 index,
                                 "length",
-                                event
-                                  .target
+                                event.target
                                   .value
                               )
                             }
@@ -1725,8 +2463,7 @@ export default function ProductForm({
                               handleVariantChange(
                                 index,
                                 "height",
-                                event
-                                  .target
+                                event.target
                                   .value
                               )
                             }
@@ -1749,8 +2486,7 @@ export default function ProductForm({
                               handleVariantChange(
                                 index,
                                 "breadth",
-                                event
-                                  .target
+                                event.target
                                   .value
                               )
                             }
@@ -1768,12 +2504,9 @@ export default function ProductForm({
                         {preview && (
                           <div className="relative">
                             <img
-                              src={
-                                preview
-                              }
+                              src={preview}
                               alt={`Variant ${
-                                index +
-                                1
+                                index + 1
                               }`}
                               className="h-28 w-28 rounded-xl border bg-background object-cover"
                             />
@@ -1787,21 +2520,13 @@ export default function ProductForm({
                               }
                               className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-white shadow"
                             >
-                              <X
-                                size={
-                                  14
-                                }
-                              />
+                              <X size={14} />
                             </button>
                           </div>
                         )}
 
                         <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border bg-background px-4 py-3 text-sm font-medium hover:bg-muted sm:w-auto">
-                          <Upload
-                            size={
-                              16
-                            }
-                          />
+                          <Upload size={16} />
 
                           {preview
                             ? "Change Image"
@@ -1875,18 +2600,14 @@ export default function ProductForm({
           </h3>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Add detailed information
-            about your product.
+            Add detailed information about
+            your product.
           </p>
         </div>
 
         <div className="grid gap-5 lg:grid-cols-2">
           {fields.map(
-            ([
-              field,
-              label,
-              description,
-            ]) => (
+            ([field, label, description]) => (
               <div
                 key={field}
                 className="rounded-2xl border bg-muted/20 p-4 sm:p-5"
@@ -1898,9 +2619,7 @@ export default function ProductForm({
                     </h4>
 
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {
-                        description
-                      }
+                      {description}
                     </p>
                   </div>
 
@@ -1909,15 +2628,11 @@ export default function ProductForm({
                     size="sm"
                     variant="outline"
                     onClick={() =>
-                      addArrayItem(
-                        field
-                      )
+                      addArrayItem(field)
                     }
                   >
                     <Plus
-                      size={
-                        14
-                      }
+                      size={14}
                       className="mr-1"
                     />
                     Add
@@ -1925,37 +2640,27 @@ export default function ProductForm({
                 </div>
 
                 <div className="space-y-2">
-                  {(
-                    form[
-                      field
-                    ] || []
-                  ).map(
-                    (
-                      value,
-                      index
-                    ) => (
+                  {(form[field] || []).map(
+                    (value, index) => (
                       <div
-                        key={
-                          index
-                        }
+                        key={index}
                         className="flex gap-2"
                       >
                         <Input
-                          value={
-                            value
-                          }
+                          value={value}
                           onChange={(
                             event
                           ) =>
                             handleArrayChange(
                               field,
                               index,
-                              event
-                                .target
+                              event.target
                                 .value
                             )
                           }
-                          placeholder={`${label} ${index + 1}`}
+                          placeholder={`${label} ${
+                            index + 1
+                          }`}
                         />
 
                         <Button
@@ -1970,11 +2675,7 @@ export default function ProductForm({
                           }
                           className="shrink-0 text-red-500 hover:text-red-600"
                         >
-                          <X
-                            size={
-                              16
-                            }
-                          />
+                          <X size={16} />
                         </Button>
                       </div>
                     )
@@ -1993,8 +2694,7 @@ export default function ProductForm({
               </h4>
 
               <p className="mt-1 text-xs text-muted-foreground">
-                Add searchable product
-                tags.
+                Add searchable product tags.
               </p>
             </div>
 
@@ -2003,9 +2703,7 @@ export default function ProductForm({
               size="sm"
               variant="outline"
               onClick={() =>
-                addArrayItem(
-                  "tags"
-                )
+                addArrayItem("tags")
               }
             >
               <Plus
@@ -2025,15 +2723,11 @@ export default function ProductForm({
                 >
                   <Input
                     value={tag}
-                    onChange={(
-                      event
-                    ) =>
+                    onChange={(event) =>
                       handleArrayChange(
                         "tags",
                         index,
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     placeholder="e.g. protein"
@@ -2050,9 +2744,7 @@ export default function ProductForm({
                       )
                     }
                   >
-                    <X
-                      size={16}
-                    />
+                    <X size={16} />
                   </Button>
                 </div>
               )
@@ -2100,8 +2792,8 @@ export default function ProductForm({
           </h3>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Control product visibility
-            and merchandising.
+            Control product visibility and
+            merchandising.
           </p>
         </div>
 
@@ -2135,9 +2827,7 @@ export default function ProductForm({
           </div>
 
           <div className="grid gap-2">
-            <Label>
-              Tax Rate (%)
-            </Label>
+            <Label>Tax Rate (%)</Label>
 
             <Input
               type="number"
@@ -2145,8 +2835,7 @@ export default function ProductForm({
               onChange={(event) =>
                 handleChange(
                   "taxRate",
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
             />
@@ -2155,11 +2844,7 @@ export default function ProductForm({
 
         <div className="grid gap-3">
           {switches.map(
-            ([
-              field,
-              label,
-              description,
-            ]) => (
+            ([field, label, description]) => (
               <div
                 key={field}
                 className="flex items-center justify-between gap-4 rounded-2xl border bg-muted/20 p-4 sm:p-5"
@@ -2170,9 +2855,7 @@ export default function ProductForm({
                   </p>
 
                   <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                    {
-                      description
-                    }
+                    {description}
                   </p>
                 </div>
 
@@ -2180,14 +2863,10 @@ export default function ProductForm({
                   checked={Boolean(
                     form[field]
                   )}
-                  onCheckedChange={(
-                    value
-                  ) =>
+                  onCheckedChange={(value) =>
                     handleChange(
                       field,
-                      Boolean(
-                        value
-                      )
+                      Boolean(value)
                     )
                   }
                 />
@@ -2208,27 +2887,22 @@ export default function ProductForm({
           </h3>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Optimize your product for
-            search engines.
+            Optimize your product for search
+            engines.
           </p>
         </div>
 
         <div className="rounded-2xl border bg-muted/20 p-4 sm:p-6">
           <div className="space-y-5">
             <div className="grid gap-2">
-              <Label>
-                SEO Title
-              </Label>
+              <Label>SEO Title</Label>
 
               <Input
-                value={
-                  form.seo.title
-                }
+                value={form.seo.title}
                 onChange={(event) =>
                   handleSeoChange(
                     "title",
-                    event.target
-                      .value
+                    event.target.value
                   )
                 }
                 placeholder="SEO title"
@@ -2236,9 +2910,7 @@ export default function ProductForm({
             </div>
 
             <div className="grid gap-2">
-              <Label>
-                SEO Description
-              </Label>
+              <Label>SEO Description</Label>
 
               <Textarea
                 value={
@@ -2247,8 +2919,7 @@ export default function ProductForm({
                 onChange={(event) =>
                   handleSeoChange(
                     "description",
-                    event.target
-                      .value
+                    event.target.value
                   )
                 }
                 placeholder="SEO description"
@@ -2258,19 +2929,14 @@ export default function ProductForm({
             </div>
 
             <div className="grid gap-2">
-              <Label>
-                SEO Keywords
-              </Label>
+              <Label>SEO Keywords</Label>
 
               <Input
-                value={
-                  form.seo.keywords
-                }
+                value={form.seo.keywords}
                 onChange={(event) =>
                   handleSeoChange(
                     "keywords",
-                    event.target
-                      .value
+                    event.target.value
                   )
                 }
                 placeholder="keyword, product, supplement"
@@ -2278,19 +2944,14 @@ export default function ProductForm({
             </div>
 
             <div className="grid gap-2">
-              <Label>
-                Canonical URL
-              </Label>
+              <Label>Canonical URL</Label>
 
               <Input
-                value={
-                  form.seo.canonical
-                }
+                value={form.seo.canonical}
                 onChange={(event) =>
                   handleSeoChange(
                     "canonical",
-                    event.target
-                      .value
+                    event.target.value
                   )
                 }
                 placeholder="https://example.com/product/..."
@@ -2298,19 +2959,14 @@ export default function ProductForm({
             </div>
 
             <div className="grid gap-2">
-              <Label>
-                Author
-              </Label>
+              <Label>Author</Label>
 
               <Input
-                value={
-                  form.seo.author
-                }
+                value={form.seo.author}
                 onChange={(event) =>
                   handleSeoChange(
                     "author",
-                    event.target
-                      .value
+                    event.target.value
                   )
                 }
                 placeholder="Author"
@@ -2338,8 +2994,7 @@ export default function ProductForm({
               </p>
 
               <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">
-                {form.seo
-                  .description ||
+                {form.seo.description ||
                   form.description ||
                   "Product description will appear here."}
               </p>
@@ -2414,14 +3069,13 @@ export default function ProductForm({
               </DialogTitle>
 
               <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
-                Complete each step to
-                configure your product.
+                Complete each step to configure
+                your product.
               </p>
             </div>
 
             <div className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold">
-              {currentStep}/
-              {steps.length}
+              {currentStep}/{steps.length}
             </div>
           </div>
         </DialogHeader>
@@ -2439,8 +3093,7 @@ export default function ProductForm({
         <DialogFooter className="shrink-0 border-t bg-background px-4 py-3 sm:px-7 sm:py-4">
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="hidden text-xs text-muted-foreground sm:block">
-              {currentStep ===
-              steps.length
+              {currentStep === steps.length
                 ? "Review your information and save the product."
                 : `Step ${currentStep} of ${steps.length}`}
             </div>
@@ -2450,9 +3103,7 @@ export default function ProductForm({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={
-                    previousStep
-                  }
+                  onClick={previousStep}
                   className="flex-1 sm:flex-none"
                 >
                   <ChevronLeft
@@ -2463,13 +3114,10 @@ export default function ProductForm({
                 </Button>
               )}
 
-              {currentStep <
-              steps.length ? (
+              {currentStep < steps.length ? (
                 <Button
                   type="button"
-                  onClick={
-                    nextStep
-                  }
+                  onClick={nextStep}
                   className="flex-1 sm:flex-none"
                 >
                   Next
@@ -2484,9 +3132,7 @@ export default function ProductForm({
                     type="button"
                     variant="outline"
                     onClick={() =>
-                      onOpenChange(
-                        false
-                      )
+                      onOpenChange(false)
                     }
                     className="flex-1 sm:flex-none"
                   >
@@ -2495,9 +3141,7 @@ export default function ProductForm({
 
                   <Button
                     type="button"
-                    onClick={
-                      handleSubmit
-                    }
+                    onClick={handleSubmit}
                     disabled={saving}
                     className="flex-1 sm:flex-none"
                   >

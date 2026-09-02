@@ -115,8 +115,6 @@ export const createProductFormData = (productData) => {
         ...rest
     } = productData;
 
-    console.log(productData)
-
     Object.entries(rest).forEach(([key, value]) => {
         if (value === null || value === undefined) {
             return;
@@ -169,10 +167,10 @@ export const createProductFormData = (productData) => {
     return formData;
 };
  
-export const getProduct = async () => {
+export const getProduct = async (page, limit) => {
     try {
         const response = await axios.get(
-            API_URL,
+            `${API_URL}?page=${page}&limit=${limit}`,
             {
                 headers: {
                     ...getAuthHeaders(),
@@ -182,7 +180,7 @@ export const getProduct = async () => {
             }
         );
 
-        console.log(response)
+        console.log(response.data)
 
         return response.data;
     } catch (error) {
@@ -318,3 +316,32 @@ export const createProduct = async (
         );
     }
 };
+
+export const searchProduct = async (product) => {
+    try {
+        const response = await axios.get(
+            `${API_URL}search?q=${product}`,
+            {
+                headers: {
+                    ...getAuthHeaders(),
+                    Accept:
+                        "application/json",
+                },
+            }
+        );
+
+        console.log(response.data)
+
+        return response.data;
+    } catch (error) {
+        console.error(
+            "Get products failed:",
+            error
+        );
+
+        return getErrorResponse(
+            error,
+            "Failed to load products"
+        );
+    }
+}

@@ -14,7 +14,9 @@ import {
   Image as ImageIcon,
   X,
   ShoppingCart,
-  Tags
+  Tags,
+  BookOpen,
+  LayoutGrid
 } from "lucide-react";
 
 const navGroups = [
@@ -75,6 +77,16 @@ const navGroups = [
         label:"Brand",
         href: "/admin/ecommerce/brands",
         icon: Tags,
+      },
+      {
+        label:"Blogs",
+        href: "/admin/ecommerce/blogs",
+        icon: BookOpen,
+      },
+      {
+        label:"Category",
+        href: "/admin/ecommerce/category",
+        icon: LayoutGrid,
       }
     ],
   },

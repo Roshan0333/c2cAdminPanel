@@ -68,8 +68,6 @@ export const createBrand = async (brandData) => {
 export const updateBrand = async (id, brandData) => {
     try {
 
-        console.log(brandData)
-
         const response = await axios.put(
             `${process.env.NEXT_PUBLIC_BASE_URL}/api/brands/${id}`,
             brandData,

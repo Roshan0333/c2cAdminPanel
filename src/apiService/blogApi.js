@@ -1,20 +1,85 @@
 import axios from "axios";
 
-export const getCoupon = async () => {
-    try{
+const API_URL = process.env.NEXT_PUBLIC_BASE_URL;
+const token = sessionStorage.getItem("pm_admin_token");
+
+export const getBlogs = async () => {
+    try {
         const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/coupons`,
+            `${API_URL}/api/blogs/dashboard/all`,
             {
-                headers:{
-                    "Content-Type":"application/json",
-                    Authorization:`Bearer ${sessionStorage.getItem("pm_admin_token")}`
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
                 }
             }
         );
+        return response.data;
+    }
+    catch (err) {
+        if (err.response) {
+            if (err.response) {
+                console.error("Server Error:", err.response.status);
+                console.error("Response:", err.response.data);
+            } else if (err.request) {
+                console.error("No response received from server.");
+            } else {
+                console.error("Request error:", err.message);
+            }
+
+            return err.response?.data;
+        }
+
+        return null;
+    }
+}
+
+export const getBlogsById = async (id) => {
+    try {
+        const response = await axios.get(
+            `${API_URL}/api/blogs/dashboard/${id}`,
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+        return response.data;
+    }
+    catch (err) {
+        if (err.response) {
+            if (err.response) {
+                console.error("Server Error:", err.response.status);
+                console.error("Response:", err.response.data);
+            } else if (err.request) {
+                console.error("No response received from server.");
+            } else {
+                console.error("Request error:", err.message);
+            }
+
+            return err.response?.data;
+        }
+
+        return null;
+    }
+}
+
+export const createBlog = async (blogData) => {
+    try {
         
+        const response = await axios.post(`${API_URL}/api/blogs/`,
+            blogData,
+            {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
         return response.data
     }
-    catch(err){
+    catch (err) {
         if (err.response) {
             if (err.response) {
                 console.error("Server Error:", err.response.status);
@@ -32,88 +97,52 @@ export const getCoupon = async () => {
     }
 }
 
-export const createCoupon = async (couponData) => {
-    try{
-        const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/coupons`,
-            couponData,
+export const updateBlog = async (id, blogData) => {
+    try {
+
+        const response = await axios.put(`${API_URL}/api/blogs/${id}`,
+            blogData,
             {
-                headers:{
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+        return response.data
+    }
+    catch (err) {
+        if (err.response) {
+            if (err.response) {
+                console.error("Server Error:", err.response.status);
+                console.error("Response:", err.response.data);
+            } else if (err.request) {
+                console.error("No response received from server.");
+            } else {
+                console.error("Request error:", err.message);
+            }
+
+            return err.response?.data;
+        }
+
+        return null;
+    }
+}
+
+export const deleteBlog = async (id) => {
+    try {
+        const response = await axios.delete(`${API_URL}/api/blogs/${id}`,
+            {
+                headers: {
                     "Content-Type": "application/json",
-                    Authorization:`Bearer ${sessionStorage.getItem("pm_admin_token")}`
+                    Authorization: `Bearer ${token}`
                 }
-            }
-        );
+            });
 
 
         return response.data
     }
-    catch(err){
-        if (err.response) {
-            if (err.response) {
-                console.error("Server Error:", err.response.status);
-                console.error("Response:", err.response.data);
-            } else if (err.request) {
-                console.error("No response received from server.");
-            } else {
-                console.error("Request error:", err.message);
-            }
-
-            return err.response?.data;
-        }
-
-        return null;
-    }
-}
-
-export const updateCoupon = async (id, couponData) => {
-    try{
-        const response = await axios.put(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/coupons/${id}`,
-            couponData,
-            {
-                headers:{
-                    "Content-Type": "application/json",
-                    Authorization:`Bearer ${sessionStorage.getItem("pm_admin_token")}`
-                }
-            }
-        );
-
-        return response.data
-    }
-    catch(err){
-        if (err.response) {
-            if (err.response) {
-                console.error("Server Error:", err.response.status);
-                console.error("Response:", err.response.data);
-            } else if (err.request) {
-                console.error("No response received from server.");
-            } else {
-                console.error("Request error:", err.message);
-            }
-
-            return err.response?.data;
-        }
-
-        return null;
-    }
-}
-
-export const deleteCoupon = async (id) => {
-    try{
-        const response = await axios.delete(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/coupons/${id}`,
-            {
-                headers:{
-                    "Content-Type":"application/json",
-                    Authorization:`Bearer ${sessionStorage.getItem("pm_admin_token")}`
-                }
-            }
-        );
-
-        return response.data
-    }
-    catch(err){
+    catch (err) {
         if (err.response) {
             if (err.response) {
                 console.error("Server Error:", err.response.status);
