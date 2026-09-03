@@ -30,7 +30,6 @@ export default function Banners (){
         headers: authHeaders(),
       });
 
-      console.log(response)
 
       setBanners(response.data?.banners || response.data || []);
     } catch (err) {

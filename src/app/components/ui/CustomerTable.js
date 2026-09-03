@@ -73,12 +73,10 @@ export default function CustomerTable({
 
         {customers.map((customer) => (
           <TableRow key={customer.id}>
-            {/* ID */}
             <TableCell className="text-sm font-medium">
               {customer.id}
             </TableCell>
 
-            {/* Avatar */}
             <TableCell>
               <div
                 className={`
@@ -93,24 +91,20 @@ export default function CustomerTable({
               </div>
             </TableCell>
 
-            {/* Name */}
             <TableCell className="max-w-[220px] truncate text-sm text-blue-600">
               {customer.name}
             </TableCell>
 
-            {/* Phone */}
             <TableCell className="text-sm">
               {customer.phone || "—"}
             </TableCell>
 
-            {/* Created */}
             <TableCell className="text-sm whitespace-nowrap">
               {customer.createdAt
                 ? customer.createdAt.slice(0, 10)
                 : "—"}
             </TableCell>
 
-            {/* Status */}
             <TableCell>
               <Badge
                 variant="outline"
@@ -126,7 +120,6 @@ export default function CustomerTable({
               </Badge>
             </TableCell>
 
-            {/* Actions */}
             <TableCell className="text-right">
               <div className="flex justify-end gap-1">
                 <Button

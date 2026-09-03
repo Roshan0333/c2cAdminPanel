@@ -40,7 +40,6 @@ export default function DeleteConfirmDialog({
         "
       >
         <AlertDialogHeader>
-          {/* Icon + Title */}
           <div className="flex items-start gap-3">
             <div
               className="
@@ -72,7 +71,6 @@ export default function DeleteConfirmDialog({
             </AlertDialogTitle>
           </div>
 
-          {/* Description */}
           <AlertDialogDescription
             className="
               break-words
@@ -85,7 +83,6 @@ export default function DeleteConfirmDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        {/* Actions */}
         <AlertDialogFooter
           className="
             mt-2

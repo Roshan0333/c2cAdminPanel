@@ -69,7 +69,6 @@ export default function OrderEditForm({
           onSubmit={handleSubmit}
           className="space-y-4"
         >
-          {/* Customer */}
           <div className="rounded-md bg-slate-50 p-3 text-sm">
             <div className="break-words font-medium text-slate-800">
               {order.user?.name ||
@@ -86,7 +85,6 @@ export default function OrderEditForm({
             </div>
           </div>
 
-          {/* Payment Status */}
           <div className="space-y-1.5">
             <Label htmlFor="paymentStatus">
               Payment Status

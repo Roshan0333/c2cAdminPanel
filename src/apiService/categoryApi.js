@@ -15,8 +15,6 @@ export const getCategory = async () => {
             }
         );
 
-        console.log(response.data)
-
         return response.data;
     }
     catch (err) {

@@ -84,25 +84,19 @@ export default function CouponTable({
             key={coupon.id}
             className="border-b last:border-0"
           >
-            {/* CODE */}
 
             <td className="whitespace-nowrap p-3 font-medium">
               {coupon.code}
             </td>
 
-            {/* DISCOUNT */}
 
             <td className="whitespace-nowrap p-3">
               {formatDiscount(coupon)}
             </td>
 
-            {/* MIN CART */}
-
             <td className="whitespace-nowrap p-3">
               {coupon.minCartValue ?? "—"}
             </td>
-
-            {/* USAGE */}
 
             <td className="whitespace-nowrap p-3">
               {coupon.usedCount ?? 0}
@@ -112,7 +106,6 @@ export default function CouponTable({
                 : ""}
             </td>
 
-            {/* STATUS */}
 
             <td className="whitespace-nowrap p-3">
               <Badge
@@ -128,8 +121,6 @@ export default function CouponTable({
               </Badge>
             </td>
 
-            {/* SHOW ON CHECKOUT */}
-
             <td className="whitespace-nowrap p-3">
               <Badge
                 variant={
@@ -144,15 +135,11 @@ export default function CouponTable({
               </Badge>
             </td>
 
-            {/* EXPIRES */}
-
             <td className="whitespace-nowrap p-3">
               {formatExpiry(
                 coupon.expiresAt
               )}
             </td>
-
-            {/* ACTIONS */}
 
             <td className="whitespace-nowrap p-3">
               <div className="flex justify-end gap-2">

@@ -49,6 +49,7 @@ import {
   Copy,
   CheckCheck,
   Globe,
+  MessageCircle,
 } from "lucide-react";
 import { getBrands } from "@/apiService/brandApi";
 import { getCategory } from "@/apiService/categoryApi";
@@ -100,15 +101,15 @@ const emptyForm = {
   whychooseus: [],
 
   faqs: [],
+
   tags: [],
 
   seo: {
     title: "",
     description: "",
-    keywords: "",
+    keywords: [],
     canonical: "",
     author: "",
-
     robots: "index, follow",
 
     facebook: {
@@ -330,30 +331,7 @@ function normalizeSeo(value) {
     return defaultSeo;
   }
 
-  if (
-    typeof value === "object" &&
-    !Array.isArray(value)
-  ) {
-    return {
-      ...defaultSeo,
-      ...value,
-
-      facebook: {
-        ...defaultSeo.facebook,
-        ...(value.facebook || {}),
-      },
-
-      twitter: {
-        ...defaultSeo.twitter,
-        ...(value.twitter || {}),
-      },
-
-      schema: {
-        ...defaultSeo.schema,
-        ...(value.schema || {}),
-      },
-    };
-  }
+  let seo = value;
 
   if (typeof value === "string") {
     let current = value;
@@ -367,25 +345,8 @@ function normalizeSeo(value) {
           typeof parsed === "object" &&
           !Array.isArray(parsed)
         ) {
-          return {
-            ...defaultSeo,
-            ...parsed,
-
-            facebook: {
-              ...defaultSeo.facebook,
-              ...(parsed.facebook || {}),
-            },
-
-            twitter: {
-              ...defaultSeo.twitter,
-              ...(parsed.twitter || {}),
-            },
-
-            schema: {
-              ...defaultSeo.schema,
-              ...(parsed.schema || {}),
-            },
-          };
+          seo = parsed;
+          break;
         }
 
         if (typeof parsed === "string") {
@@ -400,9 +361,51 @@ function normalizeSeo(value) {
     }
   }
 
-  return defaultSeo;
-}
+  if (
+    !seo ||
+    typeof seo !== "object" ||
+    Array.isArray(seo)
+  ) {
+    return defaultSeo;
+  }
 
+  let keywords = seo.keywords;
+
+  if (Array.isArray(keywords)) {
+    keywords = keywords
+      .map((keyword) => String(keyword).trim())
+      .filter(Boolean);
+  } else if (typeof keywords === "string") {
+    keywords = keywords
+      .split(",")
+      .map((keyword) => keyword.trim())
+      .filter(Boolean);
+  } else {
+    keywords = [];
+  }
+
+  return {
+    ...defaultSeo,
+    ...seo,
+
+    keywords,
+
+    facebook: {
+      ...defaultSeo.facebook,
+      ...(seo.facebook || {}),
+    },
+
+    twitter: {
+      ...defaultSeo.twitter,
+      ...(seo.twitter || {}),
+    },
+
+    schema: {
+      ...defaultSeo.schema,
+      ...(seo.schema || {}),
+    },
+  };
+}
 function normalizeImages(images) {
   if (!Array.isArray(images)) {
     return [];
@@ -4121,228 +4124,389 @@ export default function ProductForm({
   }
 
   function renderDetails() {
-    const accent = getStepAccent(4);
+  const accent = getStepAccent(4);
 
-    const fields = [
-      [
-        "keyBenefits",
-        "Key Benefits",
-        "Add product benefits.",
-      ],
-      [
-        "howToUse",
-        "How To Use",
-        "Add usage instructions.",
-      ],
-      [
-        "safetyInformation",
-        "Safety Information",
-        "Add safety instructions.",
-      ],
-      [
-        "whatToAvoid",
-        "What To Avoid",
-        "Add things customers should avoid.",
-      ],
-      [
-        "whoShouldUse",
-        "Who Should Use",
-        "Describe the ideal customer.",
-      ],
-      [
-        "whychooseus",
-        "Why Choose Us",
-        "Add reasons to choose this product.",
-      ],
-    ];
+  const fields = [
+    [
+      "keyBenefits",
+      "Key Benefits",
+      "Add product benefits.",
+    ],
+    [
+      "howToUse",
+      "How To Use",
+      "Add usage instructions.",
+    ],
+    [
+      "safetyInformation",
+      "Safety Information",
+      "Add safety instructions.",
+    ],
+    [
+      "whatToAvoid",
+      "What To Avoid",
+      "Add things customers should avoid.",
+    ],
+    [
+      "whoShouldUse",
+      "Who Should Use",
+      "Describe the ideal customer.",
+    ],
+    [
+      "whychooseus",
+      "Why Choose Us",
+      "Add reasons to choose this product.",
+    ],
+  ];
 
-    return (
-      <div className="space-y-6">
-        <SectionHeading
-          icon={FileText}
-          accent={accent}
-          title="Product Details"
-          description="Add detailed information about your product."
-        />
+  return (
+    <div className="space-y-6">
+      <SectionHeading
+        icon={FileText}
+        accent={accent}
+        title="Product Details"
+        description="Add detailed information about your product."
+      />
 
-        <div className="grid gap-5 lg:grid-cols-2">
-          {fields.map(
-            ([
-              field,
-              label,
-              description,
-            ]) => (
-              <div
-                key={field}
-                className="rounded-xl border bg-muted/20 p-4 sm:p-5"
-              >
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">
-                      {label}
-                    </p>
+      <div className="grid gap-5 lg:grid-cols-2">
+        {fields.map(
+          ([field, label, description]) => (
+            <div
+              key={field}
+              className="rounded-xl border bg-muted/20 p-4 sm:p-5"
+            >
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold">
+                    {label}
+                  </p>
 
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {description}
-                    </p>
-                  </div>
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      addArrayItem(
-                        field
-                      )
-                    }
-                  >
-                    <Plus
-                      size={14}
-                      className="mr-1"
-                    />
-                    Add
-                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {description}
+                  </p>
                 </div>
 
-                {(form[field] || []).length > 0 ? (
-                  <div className="space-y-2">
-                    {(
-                      form[field] || []
-                    ).map(
-                      (
-                        value,
-                        index
-                      ) => (
-                        <div
-                          key={index}
-                          className="flex gap-2"
-                        >
-                          <Input
-                            value={
-                              value
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              handleArrayChange(
-                                field,
-                                index,
-                                event
-                                  .target
-                                  .value
-                              )
-                            }
-                            placeholder={`${label} ${index + 1
-                              }`}
-                          />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    addArrayItem(field)
+                  }
+                  className="shrink-0"
+                >
+                  <Plus
+                    size={14}
+                    className="mr-1.5"
+                  />
+                  Add
+                </Button>
+              </div>
 
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            onClick={() =>
-                              removeArrayItem(
-                                field,
-                                index
-                              )
-                            }
-                            className="shrink-0 text-red-500"
-                          >
-                            <X
-                              size={16}
-                            />
-                          </Button>
-                        </div>
-                      )
-                    )}
+              <div className="space-y-3">
+                {(form[field] || []).length ===
+                0 ? (
+                  <div className="rounded-lg border border-dashed bg-background p-5 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      No {label.toLowerCase()} added yet.
+                    </p>
                   </div>
                 ) : (
-                  <p className={`rounded-lg border border-dashed px-3 py-2.5 text-xs ${accent.icon} border-current/30`}>
-                    Nothing added yet — click "Add" to get started.
-                  </p>
+                  (form[field] || []).map(
+                    (value, index) => (
+                      <div
+                        key={`${field}-${index}`}
+                        className="flex items-start gap-2"
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background text-xs font-semibold text-muted-foreground">
+                          {index + 1}
+                        </div>
+
+                        <Textarea
+                          value={value ?? ""}
+                          onChange={(event) =>
+                            handleArrayChange(
+                              field,
+                              index,
+                              event.target.value
+                            )
+                          }
+                          placeholder={`Enter ${label.toLowerCase()}...`}
+                          rows={3}
+                          className="min-h-[80px] resize-y bg-background"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeArrayItem(
+                              field,
+                              index
+                            )
+                          }
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-background text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                          aria-label={`Remove ${label} ${index + 1}`}
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                    )
+                  )
                 )}
               </div>
-            )
-          )}
-        </div>
+            </div>
+          )
+        )}
+      </div>
 
-        <div className="rounded-xl border bg-muted/20 p-4 sm:p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <h4 className="font-semibold">
-                Tags
-              </h4>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Add searchable product tags.
-              </p>
+      <div className="rounded-2xl border bg-muted/20 p-4 sm:p-5 lg:p-6">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${accent.chip}`}
+            >
+              <MessageCircle
+                size={19}
+                className={accent.icon}
+              />
             </div>
 
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                addArrayItem("tags")
-              }
-            >
-              <Plus
-                size={14}
-                className="mr-1"
-              />
-              Add
-            </Button>
+            <div className="min-w-0">
+              <h4 className="text-lg font-semibold">
+                Frequently Asked Questions
+              </h4>
+
+              <p className="mt-1 text-sm text-muted-foreground">
+                Add common customer questions and their answers.
+              </p>
+            </div>
           </div>
 
-          {(form.tags || []).length > 0 ? (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {(form.tags || []).map(
-                (tag, index) => (
-                  <div
-                    key={index}
-                    className="flex gap-2"
-                  >
-                    <Input
-                      value={tag}
-                      onChange={(event) =>
-                        handleArrayChange(
-                          "tags",
-                          index,
-                          event.target
-                            .value
-                        )
-                      }
-                      placeholder="e.g. protein"
-                    />
+          <Button
+            type="button"
+            onClick={() => {
+              setForm((previous) => ({
+                ...previous,
+                faqs: [
+                  ...(previous.faqs || []),
+                  {
+                    question: "",
+                    answer: "",
+                  },
+                ],
+              }));
+            }}
+            className="w-full shrink-0 sm:w-auto"
+          >
+            <Plus
+              size={16}
+              className="mr-2"
+            />
+            Add Question
+          </Button>
+        </div>
 
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      onClick={() =>
-                        removeArrayItem(
-                          "tags",
-                          index
-                        )
-                      }
-                    >
-                      <X size={16} />
-                    </Button>
+        {(!form.faqs ||
+          form.faqs.length === 0) && (
+          <div className="rounded-xl border-2 border-dashed bg-background p-8 text-center">
+            <div
+              className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full ${accent.chip}`}
+            >
+              <MessageCircle
+                size={22}
+                className={accent.icon}
+              />
+            </div>
+
+            <p className="text-sm font-semibold">
+              No FAQs added yet
+            </p>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              Click "Add Question" to create your first FAQ.
+            </p>
+          </div>
+        )}
+
+        {Array.isArray(form.faqs) &&
+          form.faqs.length > 0 && (
+            <div className="space-y-4">
+              {form.faqs.map(
+                (faq, index) => (
+                  <div
+                    key={
+                      faq?.id
+                        ? `faq-${faq.id}`
+                        : `faq-new-${index}`
+                    }
+                    className="rounded-xl border bg-background p-4 sm:p-5"
+                  >
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${accent.solid}`}
+                        >
+                          {index + 1}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold">
+                            Question {index + 1}
+                          </p>
+
+                          <p className="text-xs text-muted-foreground">
+                            Add a customer question and answer.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm((previous) => ({
+                            ...previous,
+                            faqs: (
+                              previous.faqs ||
+                              []
+                            ).filter(
+                              (_, faqIndex) =>
+                                faqIndex !==
+                                index
+                            ),
+                          }));
+                        }}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                        aria-label={`Remove question ${index + 1}`}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>
+                        Question
+                        <span className="ml-1 text-red-500">
+                          *
+                        </span>
+                      </Label>
+
+                      <Input
+                        value={
+                          faq?.question ||
+                          ""
+                        }
+                        onChange={(event) => {
+                          const value =
+                            event.target
+                              .value;
+
+                          setForm(
+                            (previous) => {
+                              const faqs = [
+                                ...(previous.faqs ||
+                                  []),
+                              ];
+
+                              faqs[index] = {
+                                ...faqs[
+                                  index
+                                ],
+                                question:
+                                  value,
+                              };
+
+                              return {
+                                ...previous,
+                                faqs,
+                              };
+                            }
+                          );
+                        }}
+                        placeholder="e.g. What are the key benefits of this product?"
+                        className="h-11"
+                      />
+                    </div>
+
+                    <div className="mt-4 grid gap-2">
+                      <Label>
+                        Answer
+                        <span className="ml-1 text-red-500">
+                          *
+                        </span>
+                      </Label>
+
+                      <Textarea
+                        value={
+                          faq?.answer ||
+                          ""
+                        }
+                        onChange={(event) => {
+                          const value =
+                            event.target
+                              .value;
+
+                          setForm(
+                            (previous) => {
+                              const faqs = [
+                                ...(previous.faqs ||
+                                  []),
+                              ];
+
+                              faqs[index] = {
+                                ...faqs[
+                                  index
+                                ],
+                                answer:
+                                  value,
+                              };
+
+                              return {
+                                ...previous,
+                                faqs,
+                              };
+                            }
+                          );
+                        }}
+                        placeholder="Write a clear and helpful answer..."
+                        rows={5}
+                        className="min-h-[120px] resize-y"
+                      />
+                    </div>
+                    {(faq?.question ||
+                      faq?.answer) && (
+                      <div className="mt-4 rounded-xl border bg-muted/30 p-4">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Preview
+                        </p>
+
+                        {faq?.question && (
+                          <p className="text-sm font-semibold">
+                            Q.{" "}
+                            {
+                              faq.question
+                            }
+                          </p>
+                        )}
+
+                        {faq?.answer && (
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                            A.{" "}
+                            {
+                              faq.answer
+                            }
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               )}
             </div>
-          ) : (
-            <p className={`rounded-lg border border-dashed px-3 py-2.5 text-xs ${accent.icon} border-current/30`}>
-              No tags yet — tags help customers find this product.
-            </p>
           )}
-        </div>
       </div>
-    );
-  }
-
+    </div>
+  );
+}
   function renderSettings() {
     const accent = getStepAccent(5);
 
@@ -4476,7 +4640,6 @@ export default function ProductForm({
 
         {renderErrorSummary()}
 
-        {/* Meta basics */}
         <div className="rounded-xl border bg-muted/20 p-4 sm:p-6">
           <CardHeading
             icon={Globe}
@@ -4522,22 +4685,89 @@ export default function ProductForm({
             </div>
 
             <div className="grid gap-2">
-              <Label>
-                SEO Keywords
-              </Label>
+              <Label htmlFor="seo-keywords">SEO Keywords</Label>
 
-              <Input
-                value={
-                  form.seo.keywords
-                }
-                onChange={(event) =>
-                  handleSeoChange(
-                    "keywords",
-                    event.target.value
-                  )
-                }
-                placeholder="keyword, product, supplement"
-              />
+              <div className="rounded-xl border bg-background p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {(form.seo?.keywords || []).map((keyword, index) => (
+                    <div
+                      key={`${keyword}-${index}`}
+                      className="flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1.5 text-sm"
+                    >
+                      <span>{keyword}</span>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm((prev) => ({
+                            ...prev,
+                            seo: {
+                              ...prev.seo,
+                              keywords: (prev.seo?.keywords || []).filter(
+                                (_, keywordIndex) => keywordIndex !== index
+                              ),
+                            },
+                          }));
+                        }}
+                        className="rounded-full p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Remove ${keyword}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+
+                  <Input
+                    id="seo-keywords"
+                    type="text"
+                    placeholder="Type keyword and press Enter"
+                    className="min-w-[220px] flex-1 border-0 shadow-none focus-visible:ring-0"
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== ",") {
+                        return;
+                      }
+
+                      event.preventDefault();
+
+                      const value = event.currentTarget.value
+                        .trim()
+                        .replace(/,$/, "");
+
+                      if (!value) {
+                        return;
+                      }
+
+                      setForm((prev) => {
+                        const currentKeywords = Array.isArray(prev.seo?.keywords)
+                          ? prev.seo.keywords
+                          : [];
+
+                        const alreadyExists = currentKeywords.some(
+                          (item) => item.toLowerCase() === value.toLowerCase()
+                        );
+
+                        if (alreadyExists) {
+                          return prev;
+                        }
+
+                        return {
+                          ...prev,
+                          seo: {
+                            ...prev.seo,
+                            keywords: [...currentKeywords, value],
+                          },
+                        };
+                      });
+
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Type a keyword and press Enter or comma to add it.
+              </p>
             </div>
 
             <div className="grid gap-2">
@@ -4626,7 +4856,6 @@ export default function ProductForm({
           </div>
         </div>
 
-        {/* Structured data / JSON-LD */}
         <div className="rounded-xl border bg-muted/20 p-4 sm:p-6">
           <CardHeading
             icon={Code2}
@@ -4802,7 +5031,6 @@ export default function ProductForm({
           )}
         </div>
 
-        {/* Social sharing */}
         <div className="rounded-xl border bg-muted/20 p-4 sm:p-6">
           <CardHeading
             icon={Share2}
@@ -4841,7 +5069,7 @@ export default function ProductForm({
                   />
                 </div>
 
-{/*test*/}
+                {/*test*/}
                 <div className="grid gap-2">
                   <Label>
                     Facebook Card
@@ -5100,7 +5328,6 @@ export default function ProductForm({
           </div>
         </div>
 
-        {/* Live preview */}
         <div
           className={`rounded-xl border p-4 sm:p-5 ${accent.border} ${accent.chip}`}
         >

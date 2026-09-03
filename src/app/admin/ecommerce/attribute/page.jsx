@@ -400,11 +400,6 @@ export default function AttributesPage() {
                 );
             }
 
-            console.log(
-                "ATTRIBUTE SAVE RESPONSE:",
-                response
-            );
-
             if (isApiFailure(response)) {
                 throw new Error(
                     getApiResponseMessage(
@@ -418,8 +413,6 @@ export default function AttributesPage() {
 
             const responseBody =
                 response?.data || response;
-
-            console.log(responseBody)
 
             if (responseBody?.success) {
                 toast.success(
@@ -503,11 +496,6 @@ export default function AttributesPage() {
                 await deleteAttribute(
                     Number(attribute.id)
                 );
-
-            console.log(
-                "ATTRIBUTE DELETE RESPONSE:",
-                response
-            );
 
             if (isApiFailure(response)) {
                 throw new Error(

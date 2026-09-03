@@ -28,7 +28,6 @@ export default function CustomerViewDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Customer heading */}
         <div className="flex min-w-0 items-center gap-3">
           <div
             className={`
@@ -54,7 +53,6 @@ export default function CustomerViewDialog({
           </div>
         </div>
 
-        {/* Details */}
         <div className="space-y-0 text-sm">
           <div className="grid grid-cols-[80px_minmax(0,1fr)] gap-3 border-b py-2">
             <span className="text-slate-500">

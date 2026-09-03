@@ -79,7 +79,7 @@ export default function CustomerForm({
           onSubmit={handleSubmit}
           className="space-y-4"
         >
-          {/* Name */}
+
           <div className="space-y-1.5">
             <Label htmlFor="name">
               Name
@@ -95,7 +95,6 @@ export default function CustomerForm({
             />
           </div>
 
-          {/* Email */}
           <div className="space-y-1.5">
             <Label htmlFor="email">
               Email
@@ -112,7 +111,6 @@ export default function CustomerForm({
             />
           </div>
 
-          {/* Phone */}
           <div className="space-y-1.5">
             <Label htmlFor="phone">
               Phone
@@ -127,7 +125,6 @@ export default function CustomerForm({
             />
           </div>
 
-          {/* Selects */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="status">
@@ -185,7 +182,6 @@ export default function CustomerForm({
             </div>
           </div>
 
-          {/* Footer */}
           <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button
               type="button"

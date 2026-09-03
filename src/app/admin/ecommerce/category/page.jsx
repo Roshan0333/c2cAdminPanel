@@ -1135,7 +1135,6 @@ export default function CategoriesPage() {
                 </div>
               </div>
 
-              {/* PREVIEW */}
               <div className="rounded-xl border bg-muted/30 p-4">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Preview

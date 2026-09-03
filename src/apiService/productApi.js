@@ -180,8 +180,8 @@ export const getProduct = async (page, limit) => {
             }
         );
 
-
         console.log(response.data)
+
         return response.data;
     } catch (error) {
         console.error(

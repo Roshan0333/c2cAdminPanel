@@ -36,7 +36,6 @@ export const getAttribute = async () => {
 
 export const createAttribute = async (attributeData) => {
     try {
-        console.log(`${API_URL}/api/attributes/`)
         const response = await axios.post(`${API_URL}/api/attributes/`,
             attributeData,
             {

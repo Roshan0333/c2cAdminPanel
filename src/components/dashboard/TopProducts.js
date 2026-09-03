@@ -40,10 +40,10 @@ export default function TopProducts({ products }) {
               {products.map((p) => {
                 const product = p.product;
 
-                // Get first available variant
+
                 const variant = product?.variants?.[0];
 
-                // Calculate total stock from all variants
+
                 const totalStock =
                   product?.variants?.reduce(
                     (total, v) => total + Number(v.stockQuantity || 0),

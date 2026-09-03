@@ -30,8 +30,7 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           {children}
         </AuthProvider>
-
-        {/* Global Toast Container */}
+        
         <Toaster richColors position="top-right" />
 
       </body>

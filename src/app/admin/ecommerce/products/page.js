@@ -438,7 +438,7 @@ export default function ProductsPage() {
         </Button>
       </div>
 
-      {/* Search bar */}
+
       <div className="relative w-full sm:max-w-sm">
         <Search
           size={16}

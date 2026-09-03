@@ -17,7 +17,6 @@ export default function OrderDetailModal({
 }) {
     if (!open || !order) return null;
 
-    console.log(order)
 
     const items =
         order.items ||
@@ -374,7 +373,7 @@ export default function OrderDetailModal({
                                                     className="flex gap-4 p-4"
                                                 >
 
-                                                    {/* Product Image */}
+                                                   
                                                     {/* <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border bg-slate-50">
 
                                                         {productImage ? (
@@ -395,7 +394,7 @@ export default function OrderDetailModal({
 
                                                     </div> */}
 
-                                                    {/* Product Details */}
+                                                
                                                     <div className="min-w-0 flex-1">
 
                                                         <h4 className="font-medium">
@@ -404,7 +403,7 @@ export default function OrderDetailModal({
                                                             }
                                                         </h4>
 
-                                                        {/* Category */}
+                                                      
                                                         {category && (
                                                             <p className="mt-1 text-xs text-slate-500">
                                                                 Category:{" "}
@@ -415,7 +414,7 @@ export default function OrderDetailModal({
                                                             </p>
                                                         )}
 
-                                                        {/* Size */}
+                                    
                                                         {item.size && (
                                                             <p className="text-xs text-slate-500">
                                                                 Size:{" "}
@@ -425,7 +424,6 @@ export default function OrderDetailModal({
                                                             </p>
                                                         )}
 
-                                                        {/* Variant */}
                                                         {item.flavour && (
                                                             <p className="text-xs text-slate-500">
                                                                 Flavour:{" "}
@@ -435,7 +433,6 @@ export default function OrderDetailModal({
                                                             </p>
                                                         )}
 
-                                                        {/* SKU */}
                                                         {item.sku && (
                                                             <p className="text-xs text-slate-500">
                                                                 SKU:{" "}
@@ -445,7 +442,7 @@ export default function OrderDetailModal({
                                                             </p>
                                                         )}
 
-                                                        {/* Price + Quantity */}
+                                                        
                                                         <div className="mt-2 flex flex-wrap gap-4 text-sm">
 
                                                             {/* <span>
@@ -464,8 +461,7 @@ export default function OrderDetailModal({
 
                                                         </div>
                                                     </div>
-
-                                                    {/* Item Total */}
+                                                    
                                                     {/* <div className="text-right">
 
                                                         <p className="font-semibold">
