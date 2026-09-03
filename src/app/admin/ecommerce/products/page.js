@@ -81,13 +81,12 @@ export default function ProductsPage() {
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // --- search state ---
-  const [searchInput, setSearchInput] = useState(""); // raw text field value
-  const [searchQuery, setSearchQuery] = useState(""); // debounced value actually used for fetching
-  const [searching, setSearching] = useState(false); // true while a search request is in flight
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false); 
   const searchTimeoutRef = useRef(null);
 
-  // Debounce searchInput -> searchQuery
+
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -169,7 +168,6 @@ export default function ProductsPage() {
 
   function handleSearchKeyDown(e) {
     if (e.key === "Enter") {
-      // flush debounce immediately
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
@@ -247,98 +245,258 @@ export default function ProductsPage() {
     }
   }
 
-  async function handleSave(product) {
-    setSaving(true);
 
-    try {
-      const normalizedProduct = {
-        ...product,
+async function handleSave(product) {
+  setSaving(true);
 
-        categoryId: toNumberOrNull(product.categoryId),
-        brandId: toNumberOrNull(product.brandId),
+  try {
+    const parsedTags = Array.isArray(product.tags)
+      ? product.tags
+          .map((tag) => {
+            if (!tag) {
+              return null;
+            }
 
-        isFeatured:
-          product.isFeatured === true || product.isFeatured === "true",
+            if (typeof tag === "string") {
+              const name = tag.trim();
 
-        taxRate:
-          product.taxRate === "" ||
-          product.taxRate === null ||
-          product.taxRate === undefined
-            ? "0"
-            : String(product.taxRate),
+              if (!name) {
+                return null;
+              }
 
-        length: toStringOrNull(product.length),
-        height: toStringOrNull(product.height),
+              const slug = name
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-+|-+$/g, "");
 
-        weight: toStringOrNull(product.weight),
+              return {
+                name,
+                slug,
+              };
+            }
 
-        variants: Array.isArray(product.variants)
-          ? product.variants.map((variant) => ({
+            const name = String(
+              tag.name || ""
+            ).trim();
+
+            const slug = String(
+              tag.slug || ""
+            )
+              .toLowerCase()
+              .trim()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "");
+
+            if (!name) {
+              return null;
+            }
+
+            return {
+              ...(tag.id
+                ? {
+                    id: Number(tag.id),
+                  }
+                : {}),
+
+              name,
+              slug,
+
+              ...(tag.createdAt
+                ? {
+                    createdAt: tag.createdAt,
+                  }
+                : {}),
+            };
+          })
+          .filter(Boolean)
+      : [];
+
+    const normalizedProduct = {
+      ...product,
+
+      categoryId: toNumberOrNull(
+        product.categoryId
+      ),
+
+      brandId: toNumberOrNull(
+        product.brandId
+      ),
+
+      isFeatured:
+        product.isFeatured === true ||
+        product.isFeatured === "true",
+
+      taxRate:
+        product.taxRate === "" ||
+        product.taxRate === null ||
+        product.taxRate === undefined
+          ? "0"
+          : String(product.taxRate),
+
+      length: toStringOrNull(
+        product.length
+      ),
+
+      height: toStringOrNull(
+        product.height
+      ),
+
+      weight: toStringOrNull(
+        product.weight
+      ),
+      tags: parsedTags,
+
+      faqs: Array.isArray(product.faqs)
+        ? product.faqs
+            .map((faq) => ({
+              ...(faq?.id
+                ? {
+                    id: Number(faq.id),
+                  }
+                : {}),
+
+              question: String(
+                faq?.question || ""
+              ).trim(),
+
+              answer: String(
+                faq?.answer || ""
+              ).trim(),
+            }))
+            .filter(
+              (faq) =>
+                faq.question ||
+                faq.answer
+            )
+        : [],
+
+      variants: Array.isArray(
+        product.variants
+      )
+        ? product.variants.map(
+            (variant) => ({
               ...variant,
 
-              price: toNumberOrDefault(variant.price, 0),
-              discountedPrice: toNumberOrNull(variant.discountedPrice),
-              stockQuantity: toNumberOrDefault(variant.stockQuantity, 0),
+              price: toNumberOrDefault(
+                variant.price,
+                0
+              ),
 
-              length: toStringOrNull(variant.length),
-              height: toStringOrNull(variant.height),
-              breadth: toStringOrNull(variant.breadth),
-              weight: toStringOrNull(variant.weight),
-            }))
-          : [],
-      };
+              discountedPrice:
+                toNumberOrNull(
+                  variant.discountedPrice
+                ),
 
-      if (product?.id) {
-        const res = await updateProduct(product.id, normalizedProduct);
+              stockQuantity:
+                toNumberOrDefault(
+                  variant.stockQuantity,
+                  0
+                ),
 
-        if (!res || res.success !== true) {
-          throw new Error(res?.message || "Product update failed");
-        }
+              length: toStringOrNull(
+                variant.length
+              ),
 
-        const updated = res.product || res.data || normalizedProduct;
+              height: toStringOrNull(
+                variant.height
+              ),
 
-        setProducts((prev) =>
-          prev.map((item) =>
-            item.id === product.id ? { ...item, ...updated } : item
+              breadth: toStringOrNull(
+                variant.breadth
+              ),
+
+              weight: toStringOrNull(
+                variant.weight
+              ),
+            })
           )
-        );
+        : [],
+    };
 
-        toast.success("Product updated successfully!");
-
-        setFormOpen(false);
-        setEditingProduct(null);
-
-        return;
-      }
-
-      const res = await createProduct(normalizedProduct);
+    if (product?.id) {
+      const res = await updateProduct(
+        product.id,
+        normalizedProduct
+      );
 
       if (!res || res.success !== true) {
-        throw new Error(res?.message || "Product creation failed");
+        throw new Error(
+          res?.message ||
+            "Product update failed"
+        );
       }
 
-      toast.success("Product created successfully!");
+      const updated =
+        res.product ||
+        res.data ||
+        normalizedProduct;
+
+      setProducts((prev) =>
+        prev.map((item) =>
+          item.id === product.id
+            ? {
+                ...item,
+                ...updated,
+              }
+            : item
+        )
+      );
+
+      toast.success(
+        "Product updated successfully!"
+      );
 
       setFormOpen(false);
       setEditingProduct(null);
 
-      setPage(1);
-
-      if (page === 1) {
-        await fetchProducts();
-      }
-    } catch (err) {
-      console.error("Save product failed:", err);
-
-      toast.error(
-        err?.response?.data?.message ||
-          err?.message ||
-          `Failed to ${product?.id ? "update" : "create"} product`
-      );
-    } finally {
-      setSaving(false);
+      return;
     }
+
+    const res = await createProduct(
+      normalizedProduct
+    );
+
+    if (!res || res.success !== true) {
+      throw new Error(
+        res?.message ||
+          "Product creation failed"
+      );
+    }
+
+    toast.success(
+      "Product created successfully!"
+    );
+
+    setFormOpen(false);
+    setEditingProduct(null);
+
+    setPage(1);
+
+    if (page === 1) {
+      await fetchProducts();
+    }
+  } catch (err) {
+    console.error(
+      "Save product failed:",
+      err
+    );
+
+    toast.error(
+      err?.response?.data?.message ||
+        err?.message ||
+        `Failed to ${
+          product?.id
+            ? "update"
+            : "create"
+        } product`
+    );
+  } finally {
+    setSaving(false);
   }
+}
+
+
 
   function goToPage(newPage) {
     if (newPage < 1 || newPage > totalPages || newPage === page) {

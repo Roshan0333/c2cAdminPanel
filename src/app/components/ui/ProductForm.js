@@ -50,6 +50,7 @@ import {
   CheckCheck,
   Globe,
   MessageCircle,
+  Tag
 } from "lucide-react";
 import { getBrands } from "@/apiService/brandApi";
 import { getCategory } from "@/apiService/categoryApi";
@@ -4258,6 +4259,348 @@ export default function ProductForm({
           )
         )}
       </div>
+
+<div className="rounded-2xl border bg-muted/20 p-4 sm:p-5 lg:p-6">
+  <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex min-w-0 items-start gap-3">
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${accent.chip}`}
+      >
+        <Tag size={19} className={accent.icon} />
+      </div>
+
+      <div className="min-w-0">
+        <h4 className="text-lg font-semibold">Tags</h4>
+
+        <p className="mt-1 text-sm text-muted-foreground">
+          Add and manage tags for this product.
+        </p>
+      </div>
+    </div>
+
+    <Button
+      type="button"
+      onClick={() => {
+        setForm((previous) => ({
+          ...previous,
+          tags: [
+            ...(Array.isArray(previous.tags)
+              ? previous.tags
+              : []),
+            {
+              name: "",
+              slug: "",
+            },
+          ],
+        }));
+      }}
+      className="w-full shrink-0 sm:w-auto"
+    >
+      <Plus size={16} className="mr-2" />
+      Add Tag
+    </Button>
+  </div>
+
+  {/* Empty State */}
+  {(!Array.isArray(form.tags) || form.tags.length === 0) && (
+    <div className="rounded-xl border-2 border-dashed bg-background p-8 text-center">
+      <div
+        className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full ${accent.chip}`}
+      >
+        <Tag size={22} className={accent.icon} />
+      </div>
+
+      <p className="text-sm font-semibold">
+        No Tags Added Yet
+      </p>
+
+      <p className="mt-1 text-xs text-muted-foreground">
+        Add tags to organize your product and improve
+        discoverability.
+      </p>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          setForm((previous) => ({
+            ...previous,
+            tags: [
+              ...(Array.isArray(previous.tags)
+                ? previous.tags
+                : []),
+              {
+                name: "",
+                slug: "",
+              },
+            ],
+          }));
+        }}
+        className="mt-4"
+      >
+        <Plus size={15} className="mr-2" />
+        Add Your First Tag
+      </Button>
+    </div>
+  )}
+
+  {/* Tags List */}
+  {Array.isArray(form.tags) && form.tags.length > 0 && (
+    <div className="space-y-4">
+      <div className="rounded-xl border bg-background p-4 sm:p-5">
+        {/* List Header */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold">
+              Product Tags
+            </p>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              Manage tag names and their slugs.
+            </p>
+          </div>
+
+          <span className="w-fit shrink-0 rounded-full border bg-muted px-3 py-1 text-xs font-medium">
+            {form.tags.length}{" "}
+            {form.tags.length === 1 ? "Tag" : "Tags"}
+          </span>
+        </div>
+
+        {/* Tags */}
+        <div className="space-y-3">
+          {form.tags.map((tag, index) => {
+            const tagName =
+              typeof tag === "string"
+                ? tag
+                : tag?.name || "";
+
+            const tagSlug =
+              typeof tag === "string"
+                ? tag
+                    .toLowerCase()
+                    .trim()
+                    .replace(/[^a-z0-9]+/g, "-")
+                    .replace(/^-+|-+$/g, "")
+                : tag?.slug || "";
+
+            return (
+              <div
+                key={
+                  tag?.id
+                    ? `tag-${tag.id}`
+                    : `tag-new-${index}`
+                }
+                className="rounded-xl border bg-muted/20 p-4"
+              >
+                {/* Tag Header */}
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${accent.chip}`}
+                    >
+                      <Tag
+                        size={16}
+                        className={accent.icon}
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">
+                        Tag {index + 1}
+                      </p>
+
+                      {tag?.id && (
+                        <p className="text-xs text-muted-foreground">
+                          ID: {tag.id}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm((previous) => ({
+                        ...previous,
+                        tags: (
+                          Array.isArray(previous.tags)
+                            ? previous.tags
+                            : []
+                        ).filter(
+                          (_, tagIndex) =>
+                            tagIndex !== index
+                        ),
+                      }));
+                    }}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                    aria-label={`Remove tag ${index + 1}`}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Name + Slug */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  {/* Name */}
+                  <div className="grid gap-2">
+                    <Label>
+                      Name
+                      <span className="ml-1 text-red-500">
+                        *
+                      </span>
+                    </Label>
+
+                    <Input
+                      value={tagName}
+                      onChange={(event) => {
+                        const value =
+                          event.target.value;
+
+                        setForm((previous) => {
+                          const tags = Array.isArray(
+                            previous.tags
+                          )
+                            ? [...previous.tags]
+                            : [];
+
+                          const currentTag =
+                            tags[index];
+
+                          const generatedSlug =
+                            value
+                              .toLowerCase()
+                              .trim()
+                              .replace(
+                                /[^a-z0-9]+/g,
+                                "-"
+                              )
+                              .replace(
+                                /^-+|-+$/g,
+                                ""
+                              );
+
+                          tags[index] = {
+                            ...(typeof currentTag ===
+                            "object"
+                              ? currentTag
+                              : {}),
+                            name: value,
+                            slug:
+                              currentTag?.slug &&
+                              currentTag.slug !==
+                                tagSlug
+                                ? currentTag.slug
+                                : generatedSlug,
+                          };
+
+                          return {
+                            ...previous,
+                            tags,
+                          };
+                        });
+                      }}
+                      placeholder="e.g. Protein"
+                      className="h-11 bg-background"
+                    />
+                  </div>
+
+                  {/* Slug */}
+                  <div className="grid gap-2">
+                    <Label>Slug</Label>
+
+                    <Input
+                      value={tagSlug}
+                      onChange={(event) => {
+                        const value =
+                          event.target.value
+                            .toLowerCase()
+                            .trim()
+                            .replace(
+                              /[^a-z0-9]+/g,
+                              "-"
+                            )
+                            .replace(
+                              /^-+|-+$/g,
+                              ""
+                            );
+
+                        setForm((previous) => {
+                          const tags = Array.isArray(
+                            previous.tags
+                          )
+                            ? [...previous.tags]
+                            : [];
+
+                          tags[index] = {
+                            ...(typeof tags[index] ===
+                            "object"
+                              ? tags[index]
+                              : {}),
+                            name: tagName,
+                            slug: value,
+                          };
+
+                          return {
+                            ...previous,
+                            tags,
+                          };
+                        });
+                      }}
+                      placeholder="protein"
+                      className="h-11 bg-background"
+                    />
+                  </div>
+                </div>
+
+                {/* Created At */}
+                {tag?.createdAt && (
+                  <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="font-medium">
+                      Created:
+                    </span>
+
+                    <span>
+                      {new Date(
+                        tag.createdAt
+                      ).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+
+                {/* Preview */}
+                {tagName.trim() && (
+                  <div className="mt-4 rounded-xl border bg-background p-4">
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Preview
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium ${accent.chip}`}
+                      >
+                        <Tag
+                          size={12}
+                          className="mr-1.5"
+                        />
+                        {tagName}
+                      </span>
+
+                      {tagSlug && (
+                        <span className="rounded-full border bg-muted px-3 py-1.5 text-xs text-muted-foreground">
+                          /{tagSlug}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  )}
+</div>
 
       <div className="rounded-2xl border bg-muted/20 p-4 sm:p-5 lg:p-6">
         <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
