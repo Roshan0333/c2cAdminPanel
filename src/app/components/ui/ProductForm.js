@@ -50,7 +50,10 @@ import {
   CheckCheck,
   Globe,
   MessageCircle,
-  Tag
+  Tag,
+  Power,
+CircleCheck,
+CircleX,
 } from "lucide-react";
 import { getBrands } from "@/apiService/brandApi";
 import { getCategory } from "@/apiService/categoryApi";
@@ -4895,6 +4898,86 @@ export default function ProductForm({
           description="Configure product visibility."
         />
 
+        <div className="rounded-2xl border bg-muted/20 p-4 sm:p-5">
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex min-w-0 items-center gap-3">
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+          form.status === "active"
+            ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+            : "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400"
+        }`}
+      >
+        <Power size={19} />
+      </div>
+
+      <div className="min-w-0">
+        <p className="font-semibold">
+          Product Status
+        </p>
+
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+          Control whether this product is available on the storefront.
+        </p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={() =>
+        handleChange(
+          "status",
+          form.status === "active"
+            ? "inactive"
+            : "active"
+        )
+      }
+      className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all sm:w-auto ${
+        form.status === "active"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400 dark:hover:bg-emerald-950/70"
+          : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/70"
+      }`}
+      aria-label={`Set product ${
+        form.status === "active"
+          ? "inactive"
+          : "active"
+      }`}
+    >
+      {form.status === "active" ? (
+        <>
+          <CircleCheck size={17} />
+          Active
+        </>
+      ) : (
+        <>
+          <CircleX size={17} />
+          Inactive
+        </>
+      )}
+    </button>
+  </div>
+
+  <div
+    className={`mt-4 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs ${
+      form.status === "active"
+        ? "border-emerald-200 bg-emerald-50/70 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-400"
+        : "border-red-200 bg-red-50/70 text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-400"
+    }`}
+  >
+    <span
+      className={`h-2 w-2 rounded-full ${
+        form.status === "active"
+          ? "bg-emerald-500"
+          : "bg-red-500"
+      }`}
+    />
+
+    {form.status === "active"
+      ? "This product is currently active and can be displayed to customers."
+      : "This product is inactive and should not be displayed to customers."}
+  </div>
+</div>
+
         <div className="grid gap-3">
           {switches.map(
             ([
@@ -4911,6 +4994,7 @@ export default function ProductForm({
                   className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors sm:p-5 ${checked ? `${accent.border} ${accent.chip}` : "bg-muted/20"
                     }`}
                 >
+
                   <div className="flex min-w-0 items-center gap-3">
                     <div
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${checked ? "bg-background" : "bg-muted"
