@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import {
   Plus,
-  Trash2,
   Upload,
   X,
   Check,
@@ -37,24 +36,36 @@ import {
   Layers3,
   FolderTree,
   AlertCircle,
+  Sparkles,
+  Star,
+  TrendingUp,
+  Clock,
+  Award,
+  Code2,
+  Braces,
+  Share2,
+  Link2,
+  AtSign,
+  Copy,
+  CheckCheck,
+  Globe,
 } from "lucide-react";
 import { getBrands } from "@/apiService/brandApi";
 import { getCategory } from "@/apiService/categoryApi";
-import  {getAttribute} from "@/apiService/attributeApi"
+import { getAttribute } from "@/apiService/attributeApi";
 
 const emptyVariant = {
   size: "",
-  attributeId: "",
-  attributeValue: "",
   price: "",
   discountedPrice: "",
   stockQuantity: "",
   weight: "",
   length: "",
   height: "",
-  wide: "",
+  breadth: "",
   image: null,
   imageFile: null,
+  attributes: [],
 };
 
 const emptyForm = {
@@ -64,6 +75,8 @@ const emptyForm = {
   sku: "",
   description: "",
   categoryId: "",
+  parentCategoryId: "",
+  subCategoryId: "",
   brandId: "",
   status: "active",
   taxRate: "0",
@@ -95,6 +108,30 @@ const emptyForm = {
     keywords: "",
     canonical: "",
     author: "",
+
+    robots: "index, follow",
+
+    facebook: {
+      title: "",
+      description: "",
+      card: "summary_large_image",
+      url: "",
+      image_path: "",
+    },
+
+    twitter: {
+      title: "",
+      description: "",
+      card: "summary_large_image",
+      redirect_url: "",
+      image_path: "",
+    },
+
+    schema: {
+      enabled: true,
+      type: "Product",
+      customJson: "",
+    },
   },
 
   hsnCode: "",
@@ -106,38 +143,102 @@ const steps = [
     title: "Basic Info",
     description: "Product information",
     icon: Package,
+    accent: {
+      icon: "text-sky-600 dark:text-sky-400",
+      chip: "bg-sky-50 dark:bg-sky-950/40",
+      solid: "bg-sky-500",
+      ring: "ring-sky-500/30",
+      border: "border-sky-200 dark:border-sky-900",
+      activeBorder: "border-sky-500",
+      activeBg: "bg-sky-50 dark:bg-sky-950/30",
+      activeText: "text-sky-700 dark:text-sky-400",
+    },
   },
   {
     id: 2,
     title: "Images",
     description: "Product gallery",
     icon: Images,
+    accent: {
+      icon: "text-indigo-600 dark:text-indigo-400",
+      chip: "bg-indigo-50 dark:bg-indigo-950/40",
+      solid: "bg-indigo-500",
+      ring: "ring-indigo-500/30",
+      border: "border-indigo-200 dark:border-indigo-900",
+      activeBorder: "border-indigo-500",
+      activeBg: "bg-indigo-50 dark:bg-indigo-950/30",
+      activeText: "text-indigo-700 dark:text-indigo-400",
+    },
   },
   {
     id: 3,
     title: "Variants",
     description: "Pricing & stock",
     icon: Layers3,
+    accent: {
+      icon: "text-violet-600 dark:text-violet-400",
+      chip: "bg-violet-50 dark:bg-violet-950/40",
+      solid: "bg-violet-500",
+      ring: "ring-violet-500/30",
+      border: "border-violet-200 dark:border-violet-900",
+      activeBorder: "border-violet-500",
+      activeBg: "bg-violet-50 dark:bg-violet-950/30",
+      activeText: "text-violet-700 dark:text-violet-400",
+    },
   },
   {
     id: 4,
     title: "Details",
     description: "Product details",
     icon: FileText,
+    accent: {
+      icon: "text-amber-600 dark:text-amber-400",
+      chip: "bg-amber-50 dark:bg-amber-950/40",
+      solid: "bg-amber-500",
+      ring: "ring-amber-500/30",
+      border: "border-amber-200 dark:border-amber-900",
+      activeBorder: "border-amber-500",
+      activeBg: "bg-amber-50 dark:bg-amber-950/30",
+      activeText: "text-amber-700 dark:text-amber-400",
+    },
   },
   {
     id: 5,
     title: "Settings",
     description: "Visibility",
     icon: Settings2,
+    accent: {
+      icon: "text-emerald-600 dark:text-emerald-400",
+      chip: "bg-emerald-50 dark:bg-emerald-950/40",
+      solid: "bg-emerald-500",
+      ring: "ring-emerald-500/30",
+      border: "border-emerald-200 dark:border-emerald-900",
+      activeBorder: "border-emerald-500",
+      activeBg: "bg-emerald-50 dark:bg-emerald-950/30",
+      activeText: "text-emerald-700 dark:text-emerald-400",
+    },
   },
   {
     id: 6,
     title: "SEO",
     description: "Search optimization",
     icon: Search,
+    accent: {
+      icon: "text-rose-600 dark:text-rose-400",
+      chip: "bg-rose-50 dark:bg-rose-950/40",
+      solid: "bg-rose-500",
+      ring: "ring-rose-500/30",
+      border: "border-rose-200 dark:border-rose-900",
+      activeBorder: "border-rose-500",
+      activeBg: "bg-rose-50 dark:bg-rose-950/30",
+      activeText: "text-rose-700 dark:text-rose-400",
+    },
   },
 ];
+
+function getStepAccent(stepId) {
+  return steps.find((step) => step.id === stepId)?.accent || steps[0].accent;
+}
 
 function toNumberOrNull(value) {
   if (
@@ -209,10 +310,24 @@ function normalizeArray(value) {
 }
 
 function normalizeSeo(value) {
+  const defaultSeo = {
+    ...emptyForm.seo,
+
+    facebook: {
+      ...emptyForm.seo.facebook,
+    },
+
+    twitter: {
+      ...emptyForm.seo.twitter,
+    },
+
+    schema: {
+      ...emptyForm.seo.schema,
+    },
+  };
+
   if (!value) {
-    return {
-      ...emptyForm.seo,
-    };
+    return defaultSeo;
   }
 
   if (
@@ -220,8 +335,23 @@ function normalizeSeo(value) {
     !Array.isArray(value)
   ) {
     return {
-      ...emptyForm.seo,
+      ...defaultSeo,
       ...value,
+
+      facebook: {
+        ...defaultSeo.facebook,
+        ...(value.facebook || {}),
+      },
+
+      twitter: {
+        ...defaultSeo.twitter,
+        ...(value.twitter || {}),
+      },
+
+      schema: {
+        ...defaultSeo.schema,
+        ...(value.schema || {}),
+      },
     };
   }
 
@@ -238,8 +368,23 @@ function normalizeSeo(value) {
           !Array.isArray(parsed)
         ) {
           return {
-            ...emptyForm.seo,
+            ...defaultSeo,
             ...parsed,
+
+            facebook: {
+              ...defaultSeo.facebook,
+              ...(parsed.facebook || {}),
+            },
+
+            twitter: {
+              ...defaultSeo.twitter,
+              ...(parsed.twitter || {}),
+            },
+
+            schema: {
+              ...defaultSeo.schema,
+              ...(parsed.schema || {}),
+            },
           };
         }
 
@@ -255,9 +400,7 @@ function normalizeSeo(value) {
     }
   }
 
-  return {
-    ...emptyForm.seo,
-  };
+  return defaultSeo;
 }
 
 function normalizeImages(images) {
@@ -284,34 +427,106 @@ function normalizeImages(images) {
     .filter(Boolean);
 }
 
+function normalizeAttributeItem(item) {
+  if (!item) {
+    return null;
+  }
+
+  const id =
+    item.attributeId ??
+    item.attribute?.id ??
+    item.id ??
+    null;
+
+  const name =
+    item.attribute?.name ??
+    item.attributeName ??
+    item.name ??
+    "";
+
+  const unit =
+    item.attribute?.unit ??
+    item.unit ??
+    "";
+
+  const value =
+    item.value ??
+    item.attributeValue ??
+    "";
+
+  if (!id && !name) {
+    return null;
+  }
+
+  return {
+    id: id ? Number(id) : null,
+    name: String(name),
+    unit: String(unit ?? ""),
+    value: String(value ?? ""),
+  };
+}
+
 function normalizeVariant(variant) {
+  let attributes = [];
+
+  if (Array.isArray(variant?.attributes)) {
+    attributes = variant.attributes
+      .map(normalizeAttributeItem)
+      .filter(Boolean);
+  } else if (Array.isArray(variant?.attribute)) {
+    attributes = variant.attribute
+      .map(normalizeAttributeItem)
+      .filter(Boolean);
+  } else if (
+    variant?.attributeId ||
+    variant?.attributeValue
+  ) {
+    const attribute = normalizeAttributeItem({
+      attributeId: variant.attributeId,
+      attribute:
+        variant.attribute ||
+        null,
+      attributeName:
+        variant.attributeName ||
+        "",
+      attributeValue:
+        variant.attributeValue,
+    });
+
+    if (attribute) {
+      attributes = [attribute];
+    }
+  }
+
   return {
     id: variant?.id,
     productId: variant?.productId,
 
     size: variant?.size ?? "",
-
-    attributeId:
-      variant?.attributeId ??
-      variant?.attribute?.id ??
-      "",
-
-    attributeValue:
-      variant?.attributeValue ?? "",
+    // flavour: variant?.flavour ?? null,
 
     price: variant?.price ?? "",
     discountedPrice:
-      variant?.discountedPrice ?? "",
+      variant?.discountedPrice ?? null,
+
     stockQuantity:
-      variant?.stockQuantity ?? "",
+      variant?.stockQuantity ?? 0,
 
     weight: variant?.weight ?? "",
     length: variant?.length ?? "",
     height: variant?.height ?? "",
-    wide: variant?.wide ?? "",
 
-    image: variant?.image ?? null,
+    breadth:
+      variant?.breadth ??
+      variant?.wide ??
+      "",
+
+    image:
+      variant?.image ?? null,
+
     imageFile: null,
+
+    attributes,
   };
 }
 
@@ -328,16 +543,19 @@ function normalizeCategory(category) {
 
     parentId:
       category.parentId === null ||
-      category.parentId === undefined
+        category.parentId === undefined
         ? null
         : Number(category.parentId),
 
-    createdAt: category.createdAt || null,
+    createdAt:
+      category.createdAt || null,
 
-    children: Array.isArray(category.children)
+    children: Array.isArray(
+      category.children
+    )
       ? category.children
-          .map(normalizeCategory)
-          .filter(Boolean)
+        .map(normalizeCategory)
+        .filter(Boolean)
       : [],
   };
 }
@@ -378,12 +596,39 @@ function normalizeAttributes(response) {
       return {
         id: Number(attribute.id),
         name: attribute.name || "",
+        slug: attribute.slug || "",
+        unit: attribute.unit || "",
+        displayOrder:
+          attribute.displayOrder ===
+            null ||
+            attribute.displayOrder ===
+            undefined
+            ? 0
+            : Number(
+              attribute.displayOrder
+            ),
+        isActive:
+          attribute.isActive ===
+            undefined ||
+            attribute.isActive === null
+            ? true
+            : Boolean(
+              attribute.isActive
+            ),
       };
     })
-    .filter(Boolean);
+    .filter(
+      (attribute) =>
+        attribute &&
+        Number.isInteger(attribute.id) &&
+        attribute.id > 0
+    );
 }
 
-function findCategoryById(categories, id) {
+function findCategoryById(
+  categories,
+  id
+) {
   if (!id) {
     return null;
   }
@@ -391,7 +636,10 @@ function findCategoryById(categories, id) {
   const numericId = Number(id);
 
   for (const category of categories) {
-    if (Number(category.id) === numericId) {
+    if (
+      Number(category.id) ===
+      numericId
+    ) {
       return category;
     }
 
@@ -399,10 +647,11 @@ function findCategoryById(categories, id) {
       Array.isArray(category.children) &&
       category.children.length
     ) {
-      const found = findCategoryById(
-        category.children,
-        numericId
-      );
+      const found =
+        findCategoryById(
+          category.children,
+          id
+        );
 
       if (found) {
         return found;
@@ -413,48 +662,22 @@ function findCategoryById(categories, id) {
   return null;
 }
 
-
-function findParentCategory(
-  categories,
-  childId,
-  parent = null
+function normalizeProduct(
+  product,
+  categories = []
 ) {
-  const numericId = Number(childId);
-
-  for (const category of categories) {
-    if (Number(category.id) === numericId) {
-      return parent;
-    }
-
-    if (
-      Array.isArray(category.children) &&
-      category.children.length
-    ) {
-      const found = findParentCategory(
-        category.children,
-        childId,
-        category
-      );
-
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return null;
-}
-
-function normalizeProduct(product, categories = []) {
   if (!product) {
     return {
       ...emptyForm,
-      variants: [{ ...emptyVariant }],
+      variants: [
+        {
+          ...emptyVariant,
+          attributes: [],
+        },
+      ],
       seo: {
         ...emptyForm.seo,
       },
-      parentCategoryId: "",
-      subCategoryId: "",
     };
   }
 
@@ -472,15 +695,18 @@ function normalizeProduct(product, categories = []) {
   let subCategoryId = "";
 
   if (categoryId) {
-    const selectedCategory = findCategoryById(
-      categories,
-      categoryId
-    );
+    const selectedCategory =
+      findCategoryById(
+        categories,
+        categoryId
+      );
 
     if (selectedCategory) {
       if (
-        selectedCategory.parentId !== null &&
-        selectedCategory.parentId !== undefined
+        selectedCategory.parentId !==
+        null &&
+        selectedCategory.parentId !==
+        undefined
       ) {
         subCategoryId = String(
           selectedCategory.id
@@ -501,10 +727,19 @@ function normalizeProduct(product, categories = []) {
     ...emptyForm,
     ...product,
 
+    id: product.id,
+
+    name: product.name || "",
+    title: product.title || "",
+    slug: product.slug || "",
+    sku: product.sku || "",
+    description:
+      product.description || "",
+
     categoryId:
       categoryId !== null &&
-      categoryId !== undefined &&
-      categoryId !== ""
+        categoryId !== undefined &&
+        categoryId !== ""
         ? String(categoryId)
         : "",
 
@@ -514,33 +749,55 @@ function normalizeProduct(product, categories = []) {
 
     brandId:
       brandId !== null &&
-      brandId !== undefined &&
-      brandId !== ""
+        brandId !== undefined &&
+        brandId !== ""
         ? String(brandId)
         : "",
 
+    status:
+      product.status || "active",
+
     taxRate:
       product.taxRate !== null &&
-      product.taxRate !== undefined
+        product.taxRate !== undefined
         ? String(product.taxRate)
         : "0",
 
-    isFeatured: Boolean(product.isFeatured),
-    isPopular: Boolean(product.isPopular),
-    isRecent: Boolean(product.isRecent),
-    isTopRated: Boolean(product.isTopRated),
-    isTrending: Boolean(product.isTrending),
+    isFeatured: Boolean(
+      product.isFeatured
+    ),
+    isPopular: Boolean(
+      product.isPopular
+    ),
+    isRecent: Boolean(
+      product.isRecent
+    ),
+    isTopRated: Boolean(
+      product.isTopRated
+    ),
+    isTrending: Boolean(
+      product.isTrending
+    ),
 
     featuredimg:
       product.featuredimg || null,
 
-    images: normalizeImages(product.images),
+    images: normalizeImages(
+      product.images
+    ),
 
     variants:
       Array.isArray(product.variants) &&
-      product.variants.length
-        ? product.variants.map(normalizeVariant)
-        : [{ ...emptyVariant }],
+        product.variants.length
+        ? product.variants.map(
+          normalizeVariant
+        )
+        : [
+          {
+            ...emptyVariant,
+            attributes: [],
+          },
+        ],
 
     keyBenefits: normalizeArray(
       product.keyBenefits
@@ -550,9 +807,10 @@ function normalizeProduct(product, categories = []) {
       product.howToUse
     ),
 
-    safetyInformation: normalizeArray(
-      product.safetyInformation
-    ),
+    safetyInformation:
+      normalizeArray(
+        product.safetyInformation
+      ),
 
     whatToAvoid: normalizeArray(
       product.whatToAvoid
@@ -566,15 +824,22 @@ function normalizeProduct(product, categories = []) {
       product.whychooseus
     ),
 
-    faqs: Array.isArray(product.faqs)
+    faqs: Array.isArray(
+      product.faqs
+    )
       ? product.faqs
       : [],
 
-    tags: normalizeArray(product.tags),
+    tags: normalizeArray(
+      product.tags
+    ),
 
-    seo: normalizeSeo(product.seo),
+    seo: normalizeSeo(
+      product.seo
+    ),
 
-    hsnCode: product.hsnCode || "",
+    hsnCode:
+      product.hsnCode || "",
   };
 }
 
@@ -593,13 +858,6 @@ function getFilePreview(file) {
   return null;
 }
 
-
-const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-function isValidSlug(value) {
-  return SLUG_REGEX.test(value);
-}
-
 function isValidUrl(value) {
   try {
     new URL(value);
@@ -609,16 +867,104 @@ function isValidUrl(value) {
   }
 }
 
-function validateBasicInfo(form, subCategories) {
+const SLUG_REGEX =
+  /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function isValidSlug(value) {
+  return SLUG_REGEX.test(value);
+}
+
+function buildAutoJsonLd(form, selectedBrand) {
+  const images = [
+    ...(typeof form.featuredimg === "string"
+      ? [form.featuredimg]
+      : []),
+    ...(Array.isArray(form.images)
+      ? form.images.filter(
+        (image) => typeof image === "string"
+      )
+      : []),
+  ];
+
+  const variants = Array.isArray(form.variants)
+    ? form.variants
+    : [];
+
+  const prices = variants
+    .map((variant) =>
+      Number(
+        variant?.discountedPrice ||
+        variant?.price ||
+        0
+      )
+    )
+    .filter((price) => !Number.isNaN(price) && price > 0);
+
+  const inStock = variants.some(
+    (variant) => Number(variant?.stockQuantity) > 0
+  );
+
+  const data = {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    name: form.name || form.title || undefined,
+    description: form.description || undefined,
+    sku: form.sku || undefined,
+    image: images.length ? images : undefined,
+    brand: selectedBrand?.name
+      ? { "@type": "Brand", name: selectedBrand.name }
+      : undefined,
+    offers: prices.length
+      ? {
+        "@type": "AggregateOffer",
+        priceCurrency: "INR",
+        lowPrice: Math.min(...prices),
+        highPrice: Math.max(...prices),
+        offerCount: variants.length,
+        availability: inStock
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
+        url: form.seo?.canonical || undefined,
+      }
+      : undefined,
+  };
+
+  Object.keys(data).forEach((key) => {
+    if (data[key] === undefined) {
+      delete data[key];
+    }
+  });
+
+  if (data.offers) {
+    Object.keys(data.offers).forEach((key) => {
+      if (data.offers[key] === undefined) {
+        delete data.offers[key];
+      }
+    });
+  }
+
+  return data;
+}
+
+function validateBasicInfo(
+  form,
+  subCategories
+) {
   const errors = {};
 
   if (!form.name?.trim()) {
-    errors.name = "Product name is required.";
+    errors.name =
+      "Product name is required.";
   }
 
-  if (form.slug?.trim() && !isValidSlug(form.slug.trim())) {
+  if (
+    form.slug?.trim() &&
+    !isValidSlug(
+      form.slug.trim()
+    )
+  ) {
     errors.slug =
-      "Slug can only contain lowercase letters, numbers and hyphens (e.g. my-product-name).";
+      "Slug can only contain lowercase letters, numbers and hyphens.";
   }
 
   if (!form.parentCategoryId) {
@@ -632,8 +978,13 @@ function validateBasicInfo(form, subCategories) {
       "This category has subcategories — please select one.";
   }
 
-  if (form.taxRate !== "" && form.taxRate !== null) {
-    const taxRate = Number(form.taxRate);
+  if (
+    form.taxRate !== "" &&
+    form.taxRate !== null
+  ) {
+    const taxRate = Number(
+      form.taxRate
+    );
 
     if (
       Number.isNaN(taxRate) ||
@@ -648,93 +999,221 @@ function validateBasicInfo(form, subCategories) {
   return errors;
 }
 
-function validateVariants(variants) {
-  return (variants || []).map((variant) => {
-    const errors = {};
+function validateVariants(
+  variants
+) {
+  return (variants || []).map(
+    (variant) => {
+      const errors = {};
 
-    const price =
-      variant.price === "" || variant.price === null
-        ? NaN
-        : Number(variant.price);
+      const price =
+        variant.price === "" ||
+          variant.price === null
+          ? NaN
+          : Number(variant.price);
 
-    if (Number.isNaN(price) || price <= 0) {
-      errors.price = "Price must be greater than 0.";
-    }
-
-    if (
-      variant.discountedPrice !== "" &&
-      variant.discountedPrice !== null &&
-      variant.discountedPrice !== undefined
-    ) {
-      const discounted = Number(variant.discountedPrice);
-
-      if (Number.isNaN(discounted) || discounted < 0) {
-        errors.discountedPrice =
-          "Discounted price must be a valid, non-negative number.";
-      } else if (!Number.isNaN(price) && discounted >= price) {
-        errors.discountedPrice =
-          "Discounted price must be less than the price.";
+      if (
+        Number.isNaN(price) ||
+        price <= 0
+      ) {
+        errors.price =
+          "Price must be greater than 0.";
       }
+
+      if (
+        variant.discountedPrice !==
+        "" &&
+        variant.discountedPrice !==
+        null &&
+        variant.discountedPrice !==
+        undefined
+      ) {
+        const discounted =
+          Number(
+            variant.discountedPrice
+          );
+
+        if (
+          Number.isNaN(
+            discounted
+          ) ||
+          discounted < 0
+        ) {
+          errors.discountedPrice =
+            "Discounted price must be a valid, non-negative number.";
+        } else if (
+          !Number.isNaN(price) &&
+          discounted >= price
+        ) {
+          errors.discountedPrice =
+            "Discounted price must be less than the price.";
+        }
+      }
+
+      const stock =
+        variant.stockQuantity ===
+          "" ||
+          variant.stockQuantity ===
+          null
+          ? NaN
+          : Number(
+            variant.stockQuantity
+          );
+
+      if (
+        Number.isNaN(stock) ||
+        stock < 0
+      ) {
+        errors.stockQuantity =
+          "Stock quantity is required and cannot be negative.";
+      }
+
+      return errors;
     }
-
-    const stock =
-      variant.stockQuantity === "" ||
-      variant.stockQuantity === null
-        ? NaN
-        : Number(variant.stockQuantity);
-
-    if (Number.isNaN(stock) || stock < 0) {
-      errors.stockQuantity =
-        "Stock quantity is required and cannot be negative.";
-    }
-
-    return errors;
-  });
+  );
 }
 
-function variantsHaveErrors(variantErrors) {
+function variantsHaveErrors(
+  variantErrors
+) {
   return (variantErrors || []).some(
-    (errors) => Object.keys(errors || {}).length > 0
+    (errors) =>
+      Object.keys(
+        errors || {}
+      ).length > 0
   );
 }
 
 function validateSeo(seo) {
   const errors = {};
 
-  if (seo?.canonical?.trim() && !isValidUrl(seo.canonical.trim())) {
+  if (
+    seo?.canonical?.trim() &&
+    !isValidUrl(
+      seo.canonical.trim()
+    )
+  ) {
     errors.canonical =
-      "Enter a valid URL (e.g. https://example.com/product/slug).";
+      "Enter a valid URL.";
+  }
+
+  const customJson =
+    seo?.schema?.customJson;
+
+  if (
+    seo?.schema?.enabled &&
+    customJson &&
+    customJson.trim()
+  ) {
+    try {
+      JSON.parse(customJson);
+    } catch {
+      errors.schemaJson =
+        "Custom JSON-LD must be valid JSON.";
+    }
   }
 
   return errors;
 }
 
-function stepForErrors(basicErrors, variantErrors, seoErrors) {
-  if (Object.keys(basicErrors).length > 0) {
+function stepForErrors(
+  basicErrors,
+  variantErrors,
+  seoErrors
+) {
+  if (
+    Object.keys(
+      basicErrors
+    ).length > 0
+  ) {
     return 1;
   }
 
-  if (variantsHaveErrors(variantErrors)) {
+  if (
+    variantsHaveErrors(
+      variantErrors
+    )
+  ) {
     return 3;
   }
 
-  if (Object.keys(seoErrors).length > 0) {
+  if (
+    Object.keys(
+      seoErrors
+    ).length > 0
+  ) {
     return 6;
   }
 
   return null;
 }
 
-function FieldError({ message }) {
+function FieldError({
+  message,
+}) {
   if (!message) {
     return null;
   }
 
   return (
-    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-red-500">
-      <AlertCircle size={12} className="shrink-0" />
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-red-500">
+      <AlertCircle
+        size={12}
+        className="shrink-0"
+      />
       {message}
     </p>
+  );
+}
+
+function SectionHeading({ icon: Icon, accent, title, description }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${accent.chip}`}
+      >
+        <Icon size={19} className={accent.icon} />
+      </div>
+      <div className="min-w-0 pt-0.5">
+        <h3 className="text-lg font-semibold tracking-tight sm:text-xl">
+          {title}
+        </h3>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+
+function CardHeading({ icon: Icon, accent, title, description, action }) {
+  return (
+    <div className="mb-4 flex items-start justify-between gap-3 border-b pb-3">
+      <div className="flex min-w-0 items-start gap-2.5">
+        {Icon && (
+          <div
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${accent ? accent.chip : "bg-muted"
+              }`}
+          >
+            <Icon
+              size={15}
+              className={accent ? accent.icon : "text-muted-foreground"}
+            />
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">{title}</p>
+          {description && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {description}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
   );
 }
 
@@ -745,34 +1224,53 @@ export default function ProductForm({
   onSave,
   saving,
 }) {
-  const [form, setForm] = useState({
-    ...emptyForm,
-    parentCategoryId: "",
-    subCategoryId: "",
-  });
+  const [form, setForm] =
+    useState({
+      ...emptyForm,
+    });
 
-  const [brands, setBrands] = useState([]);
-  const [categories, setCategories] =
+  const [brands, setBrands] =
     useState([]);
 
-  const [attributes, setAttributes] =
-    useState([]);
+  const [
+    categories,
+    setCategories,
+  ] = useState([]);
 
-  const [loadingBrands, setLoadingBrands] =
-    useState(false);
+  const [
+    attributes,
+    setAttributes,
+  ] = useState([]);
 
-  const [loadingCategories, setLoadingCategories] =
-    useState(false);
+  const [
+    loadingBrands,
+    setLoadingBrands,
+  ] = useState(false);
 
-  const [loadingAttributes, setLoadingAttributes] =
-    useState(false);
+  const [
+    loadingCategories,
+    setLoadingCategories,
+  ] = useState(false);
 
-  const [currentStep, setCurrentStep] =
-    useState(1);
+  const [
+    loadingAttributes,
+    setLoadingAttributes,
+  ] = useState(false);
 
-  const [errors, setErrors] = useState({
-    variants: [],
-  });
+  const [
+    currentStep,
+    setCurrentStep,
+  ] = useState(1);
+
+  const [errors, setErrors] =
+    useState({
+      variants: [],
+    });
+
+  const [
+    schemaCopied,
+    setSchemaCopied,
+  ] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -789,7 +1287,10 @@ export default function ProductForm({
       return;
     }
 
-    if (product && categories.length > 0) {
+    if (
+      product &&
+      categories.length > 0
+    ) {
       setForm(
         normalizeProduct(
           product,
@@ -799,17 +1300,23 @@ export default function ProductForm({
     } else if (!product) {
       setForm({
         ...emptyForm,
-        variants: [{ ...emptyVariant }],
+        variants: [
+          {
+            ...emptyVariant,
+            attributes: [],
+          },
+        ],
         seo: {
           ...emptyForm.seo,
         },
-        parentCategoryId: "",
-        subCategoryId: "",
       });
     }
 
     setCurrentStep(1);
-    setErrors({ variants: [] });
+
+    setErrors({
+      variants: [],
+    });
   }, [
     product,
     categories,
@@ -820,23 +1327,21 @@ export default function ProductForm({
     try {
       setLoadingBrands(true);
 
-      const response = await getBrands();
+      const response =
+        await getBrands();
 
       if (response?.success) {
         setBrands(
-          Array.isArray(response.brands)
+          Array.isArray(
+            response.brands
+          )
             ? response.brands
             : []
         );
       } else {
         setBrands([]);
       }
-    } catch (error) {
-      console.error(
-        "Failed to load brands:",
-        error
-      );
-
+    } catch {
       setBrands([]);
     } finally {
       setLoadingBrands(false);
@@ -845,9 +1350,12 @@ export default function ProductForm({
 
   async function loadCategories() {
     try {
-      setLoadingCategories(true);
+      setLoadingCategories(
+        true
+      );
 
-      const response = await getCategory();
+      const response =
+        await getCategory();
 
       if (!response?.success) {
         setCategories([]);
@@ -855,25 +1363,27 @@ export default function ProductForm({
       }
 
       setCategories(
-        normalizeCategoryResponse(response)
+        normalizeCategoryResponse(
+          response
+        )
       );
-    } catch (error) {
-      console.error(
-        "Failed to load categories:",
-        error
-      );
-
+    } catch {
       setCategories([]);
     } finally {
-      setLoadingCategories(false);
+      setLoadingCategories(
+        false
+      );
     }
   }
 
   async function loadAttributes() {
     try {
-      setLoadingAttributes(true);
+      setLoadingAttributes(
+        true
+      );
 
-      const response = await getAttribute();
+      const response =
+        await getAttribute();
 
       if (!response?.success) {
         setAttributes([]);
@@ -881,96 +1391,178 @@ export default function ProductForm({
       }
 
       setAttributes(
-        normalizeAttributes(response)
+        normalizeAttributes(
+          response
+        )
       );
-    } catch (error) {
-      console.error(
-        "Failed to load attributes:",
-        error
-      );
-
+    } catch {
       setAttributes([]);
     } finally {
-      setLoadingAttributes(false);
+      setLoadingAttributes(
+        false
+      );
     }
   }
 
-  const parentCategories = useMemo(() => {
-    return categories.filter(
-      (category) =>
-        category.parentId === null
+  const parentCategories =
+    useMemo(
+      () =>
+        categories.filter(
+          (category) =>
+            category.parentId ===
+            null
+        ),
+      [categories]
     );
-  }, [categories]);
-
 
   const selectedParentCategory =
     useMemo(() => {
-      if (!form.parentCategoryId) {
+      if (
+        !form.parentCategoryId
+      ) {
         return null;
       }
 
       return parentCategories.find(
         (category) =>
           Number(category.id) ===
-          Number(form.parentCategoryId)
+          Number(
+            form.parentCategoryId
+          )
       );
     }, [
       parentCategories,
       form.parentCategoryId,
     ]);
 
-  const subCategories = useMemo(() => {
-    if (!selectedParentCategory) {
-      return [];
-    }
+  const subCategories =
+    useMemo(() => {
+      if (
+        !selectedParentCategory
+      ) {
+        return [];
+      }
 
-    return Array.isArray(
-      selectedParentCategory.children
-    )
-      ? selectedParentCategory.children
-      : [];
-  }, [selectedParentCategory]);
-
+      return Array.isArray(
+        selectedParentCategory.children
+      )
+        ? selectedParentCategory.children
+        : [];
+    }, [
+      selectedParentCategory,
+    ]);
 
   const selectedSubCategory =
     useMemo(() => {
-      if (!form.subCategoryId) {
+      if (
+        !form.subCategoryId
+      ) {
         return null;
       }
 
       return subCategories.find(
         (category) =>
           Number(category.id) ===
-          Number(form.subCategoryId)
+          Number(
+            form.subCategoryId
+          )
       );
     }, [
       subCategories,
       form.subCategoryId,
     ]);
 
+  const selectedBrand =
+    useMemo(() => {
+      if (!form.brandId) {
+        return null;
+      }
 
-  function clearFieldError(field) {
+      return brands.find(
+        (brand) =>
+          Number(brand.id) ===
+          Number(form.brandId)
+      );
+    }, [
+      brands,
+      form.brandId,
+    ]);
+
+  // The JSON-LD that will actually be emitted: the user's custom override
+  // when they've supplied one, otherwise an auto-generated Product schema
+  // kept in sync with the rest of the form.
+  const effectiveJsonLd = useMemo(() => {
+    const customJson = form.seo?.schema?.customJson;
+
+    if (customJson && customJson.trim()) {
+      try {
+        return {
+          value: JSON.parse(customJson),
+          isCustom: true,
+          isValid: true,
+        };
+      } catch {
+        return {
+          value: null,
+          isCustom: true,
+          isValid: false,
+        };
+      }
+    }
+
+    return {
+      value: buildAutoJsonLd(form, selectedBrand),
+      isCustom: false,
+      isValid: true,
+    };
+  }, [form, selectedBrand]);
+
+  function clearFieldError(
+    field
+  ) {
     setErrors((previous) => {
       if (!previous[field]) {
         return previous;
       }
 
-      const next = { ...previous };
+      const next = {
+        ...previous,
+      };
+
       delete next[field];
+
       return next;
     });
   }
 
-  function clearVariantFieldError(index, field) {
+  function clearVariantFieldError(
+    index,
+    field
+  ) {
     setErrors((previous) => {
-      if (!previous.variants?.[index]?.[field]) {
+      if (
+        !previous.variants?.[
+        index
+        ]?.[field]
+      ) {
         return previous;
       }
 
-      const variants = [...previous.variants];
-      const variantErrors = { ...variants[index] };
-      delete variantErrors[field];
-      variants[index] = variantErrors;
+      const variants = [
+        ...(previous.variants ||
+          []),
+      ];
+
+      const variantErrors = {
+        ...variants[index],
+      };
+
+      delete variantErrors[
+        field
+      ];
+
+      variants[index] =
+        variantErrors;
 
       return {
         ...previous,
@@ -979,7 +1571,10 @@ export default function ProductForm({
     });
   }
 
-  function handleChange(field, value) {
+  function handleChange(
+    field,
+    value
+  ) {
     setForm((previous) => ({
       ...previous,
       [field]: value,
@@ -999,8 +1594,13 @@ export default function ProductForm({
         categoryId: "",
       }));
 
-      clearFieldError("parentCategoryId");
-      clearFieldError("subCategoryId");
+      clearFieldError(
+        "parentCategoryId"
+      );
+
+      clearFieldError(
+        "subCategoryId"
+      );
 
       return;
     }
@@ -1019,17 +1619,20 @@ export default function ProductForm({
 
       subCategoryId: "",
 
-
       categoryId:
         parent?.children?.length
           ? ""
           : value,
     }));
 
-    clearFieldError("parentCategoryId");
-    clearFieldError("subCategoryId");
-  }
+    clearFieldError(
+      "parentCategoryId"
+    );
 
+    clearFieldError(
+      "subCategoryId"
+    );
+  }
 
   function handleSubCategoryChange(
     value
@@ -1038,28 +1641,35 @@ export default function ProductForm({
       setForm((previous) => ({
         ...previous,
         subCategoryId: "",
-        categoryId: "",
+        categoryId:
+          subCategories.length ===
+            0
+            ? previous.parentCategoryId
+            : "",
       }));
+
+      clearFieldError(
+        "subCategoryId"
+      );
 
       return;
     }
 
     setForm((previous) => ({
       ...previous,
-
       subCategoryId: value,
-
-      /*
-       * FINAL CATEGORY ID
-       * This is what goes to your API.
-       */
       categoryId: value,
     }));
 
-    clearFieldError("subCategoryId");
+    clearFieldError(
+      "subCategoryId"
+    );
   }
 
-  function handleSeoChange(field, value) {
+  function handleSeoChange(
+    field,
+    value
+  ) {
     setForm((previous) => ({
       ...previous,
       seo: {
@@ -1068,8 +1678,36 @@ export default function ProductForm({
       },
     }));
 
-    if (field === "canonical") {
-      clearFieldError("canonical");
+    if (
+      field === "canonical"
+    ) {
+      clearFieldError(
+        "canonical"
+      );
+    }
+  }
+
+  function handleSeoNestedChange(
+    section,
+    field,
+    value
+  ) {
+    setForm((previous) => ({
+      ...previous,
+      seo: {
+        ...previous.seo,
+        [section]: {
+          ...previous.seo[section],
+          [field]: value,
+        },
+      },
+    }));
+
+    if (
+      section === "schema" &&
+      field === "customJson"
+    ) {
+      clearFieldError("schemaJson");
     }
   }
 
@@ -1102,7 +1740,10 @@ export default function ProductForm({
     }));
   }
 
-  function removeArrayItem(field, index) {
+  function removeArrayItem(
+    field,
+    index
+  ) {
     setForm((previous) => ({
       ...previous,
       [field]: (
@@ -1135,7 +1776,124 @@ export default function ProductForm({
       };
     });
 
-    clearVariantFieldError(index, field);
+    clearVariantFieldError(
+      index,
+      field
+    );
+  }
+
+  function handleVariantAttributeChange(
+    index,
+    attributeId
+  ) {
+    if (
+      !attributeId ||
+      attributeId === "none"
+    ) {
+      setForm((previous) => {
+        const variants = [
+          ...previous.variants,
+        ];
+
+        variants[index] = {
+          ...variants[index],
+          attributes: [],
+        };
+
+        return {
+          ...previous,
+          variants,
+        };
+      });
+
+      return;
+    }
+
+    const attribute =
+      attributes.find(
+        (item) =>
+          Number(item.id) ===
+          Number(attributeId)
+      );
+
+    if (!attribute) {
+      return;
+    }
+
+    setForm((previous) => {
+      const variants = [
+        ...previous.variants,
+      ];
+
+      const currentVariant =
+        variants[index];
+
+      const currentValue =
+        currentVariant
+          ?.attributes?.[0]
+          ?.value ?? "";
+
+      variants[index] = {
+        ...currentVariant,
+
+        attributes: [
+          {
+            id: Number(
+              attribute.id
+            ),
+            name:
+              attribute.name,
+            unit:
+              attribute.unit || "",
+            value:
+              currentValue,
+          },
+        ],
+      };
+
+      return {
+        ...previous,
+        variants,
+      };
+    });
+  }
+
+  function handleVariantAttributeValueChange(
+    index,
+    value
+  ) {
+    setForm((previous) => {
+      const variants = [
+        ...previous.variants,
+      ];
+
+      const currentVariant =
+        variants[index];
+
+      const currentAttribute =
+        currentVariant
+          ?.attributes?.[0];
+
+      if (!currentAttribute) {
+        return previous;
+      }
+
+      variants[index] = {
+        ...currentVariant,
+
+        attributes: [
+          {
+            ...currentAttribute,
+            value,
+          },
+        ],
+      };
+
+      return {
+        ...previous,
+        variants,
+      };
+    });
   }
 
   function addVariant() {
@@ -1145,19 +1903,27 @@ export default function ProductForm({
         ...previous.variants,
         {
           ...emptyVariant,
+          attributes: [],
         },
       ],
     }));
 
     setErrors((previous) => ({
       ...previous,
-      variants: [...(previous.variants || []), {}],
+      variants: [
+        ...(previous.variants ||
+          []),
+        {},
+      ],
     }));
   }
 
   function removeVariant(index) {
     setForm((previous) => {
-      if (previous.variants.length <= 1) {
+      if (
+        previous.variants.length <=
+        1
+      ) {
         return previous;
       }
 
@@ -1173,13 +1939,18 @@ export default function ProductForm({
 
     setErrors((previous) => ({
       ...previous,
-      variants: (previous.variants || []).filter(
-        (_, itemIndex) => itemIndex !== index
+      variants: (
+        previous.variants || []
+      ).filter(
+        (_, itemIndex) =>
+          itemIndex !== index
       ),
     }));
   }
 
-  function handleFeaturedImage(event) {
+  function handleFeaturedImage(
+    event
+  ) {
     const file =
       event.target.files?.[0];
 
@@ -1187,15 +1958,30 @@ export default function ProductForm({
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image.");
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
+      alert(
+        "Please select a valid image."
+      );
+
       event.target.value = "";
+
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Image must be less than 5MB.");
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
+      alert(
+        "Image must be less than 5MB."
+      );
+
       event.target.value = "";
+
       return;
     }
 
@@ -1214,7 +2000,9 @@ export default function ProductForm({
     }));
   }
 
-  function handleGalleryImages(event) {
+  function handleGalleryImages(
+    event
+  ) {
     const files = Array.from(
       event.target.files || []
     );
@@ -1223,27 +2011,25 @@ export default function ProductForm({
       return;
     }
 
-    const validFiles = files.filter(
-      (file) => {
-        if (!file.type.startsWith("image/")) {
+    const validFiles =
+      files.filter((file) => {
+        if (
+          !file.type.startsWith(
+            "image/"
+          )
+        ) {
           return false;
         }
 
-        if (file.size > 5 * 1024 * 1024) {
+        if (
+          file.size >
+          5 * 1024 * 1024
+        ) {
           return false;
         }
 
         return true;
-      }
-    );
-
-    if (!validFiles.length) {
-      alert(
-        "Please select valid images under 5MB."
-      );
-      event.target.value = "";
-      return;
-    }
+      });
 
     setForm((previous) => ({
       ...previous,
@@ -1256,7 +2042,9 @@ export default function ProductForm({
     event.target.value = "";
   }
 
-  function removeGalleryImage(index) {
+  function removeGalleryImage(
+    index
+  ) {
     setForm((previous) => ({
       ...previous,
       images: (
@@ -1279,15 +2067,30 @@ export default function ProductForm({
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image.");
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
+      alert(
+        "Please select a valid image."
+      );
+
       event.target.value = "";
+
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Image must be less than 5MB.");
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
+      alert(
+        "Image must be less than 5MB."
+      );
+
       event.target.value = "";
+
       return;
     }
 
@@ -1311,7 +2114,9 @@ export default function ProductForm({
     event.target.value = "";
   }
 
-  function removeVariantImage(index) {
+  function removeVariantImage(
+    index
+  ) {
     setForm((previous) => {
       const variants = [
         ...previous.variants,
@@ -1330,12 +2135,16 @@ export default function ProductForm({
     });
   }
 
-  function getImagePreview(image) {
+  function getImagePreview(
+    image
+  ) {
     if (!image) {
       return null;
     }
 
-    if (typeof image === "string") {
+    if (
+      typeof image === "string"
+    ) {
       return image;
     }
 
@@ -1348,37 +2157,54 @@ export default function ProductForm({
 
   function nextStep() {
     if (currentStep === 1) {
-      const basicErrors = validateBasicInfo(
-        form,
-        subCategories
-      );
+      const basicErrors =
+        validateBasicInfo(
+          form,
+          subCategories
+        );
 
-      if (Object.keys(basicErrors).length > 0) {
+      if (
+        Object.keys(
+          basicErrors
+        ).length > 0
+      ) {
         setErrors((previous) => ({
           ...previous,
           ...basicErrors,
         }));
+
         return;
       }
     }
 
     if (currentStep === 3) {
-      const variantErrors = validateVariants(
-        form.variants
-      );
+      const variantErrors =
+        validateVariants(
+          form.variants
+        );
 
-      if (variantsHaveErrors(variantErrors)) {
+      if (
+        variantsHaveErrors(
+          variantErrors
+        )
+      ) {
         setErrors((previous) => ({
           ...previous,
-          variants: variantErrors,
+          variants:
+            variantErrors,
         }));
+
         return;
       }
     }
 
-    if (currentStep < steps.length) {
+    if (
+      currentStep <
+      steps.length
+    ) {
       setCurrentStep(
-        (previous) => previous + 1
+        (previous) =>
+          previous + 1
       );
     }
   }
@@ -1386,33 +2212,96 @@ export default function ProductForm({
   function previousStep() {
     if (currentStep > 1) {
       setCurrentStep(
-        (previous) => previous - 1
+        (previous) =>
+          previous - 1
       );
     }
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Submit
-  |--------------------------------------------------------------------------
-  */
+  function buildVariantAttributes(
+    variant
+  ) {
+    if (
+      !Array.isArray(
+        variant?.attributes
+      )
+    ) {
+      return [];
+    }
+
+    return variant.attributes
+      .map((attribute) => ({
+        attributeId:
+          attribute?.id
+            ? Number(
+              attribute.id
+            )
+            : null,
+        value:
+          attribute?.value ??
+          "",
+      }))
+      .filter(
+        (attribute) =>
+          attribute.attributeId !==
+          null
+      );
+  }
+
+  async function copySchemaToClipboard() {
+    if (
+      !effectiveJsonLd.isValid ||
+      !effectiveJsonLd.value
+    ) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        JSON.stringify(
+          effectiveJsonLd.value,
+          null,
+          2
+        )
+      );
+
+      setSchemaCopied(true);
+
+      setTimeout(
+        () => setSchemaCopied(false),
+        1500
+      );
+    } catch {
+      // Clipboard access can fail (permissions, insecure context) —
+      // silently ignore, the JSON is still visible in the preview.
+    }
+  }
 
   function handleSubmit() {
-    const basicErrors = validateBasicInfo(
-      form,
-      subCategories
-    );
+    const basicErrors =
+      validateBasicInfo(
+        form,
+        subCategories
+      );
 
-    const variantErrors = validateVariants(
-      form.variants
-    );
+    const variantErrors =
+      validateVariants(
+        form.variants
+      );
 
-    const seoErrors = validateSeo(form.seo);
+    const seoErrors =
+      validateSeo(form.seo);
 
     const hasErrors =
-      Object.keys(basicErrors).length > 0 ||
-      variantsHaveErrors(variantErrors) ||
-      Object.keys(seoErrors).length > 0;
+      Object.keys(
+        basicErrors
+      ).length > 0 ||
+      variantsHaveErrors(
+        variantErrors
+      ) ||
+      Object.keys(
+        seoErrors
+      ).length > 0;
 
     if (hasErrors) {
       setErrors({
@@ -1421,146 +2310,261 @@ export default function ProductForm({
         variants: variantErrors,
       });
 
-      const targetStep = stepForErrors(
-        basicErrors,
-        variantErrors,
-        seoErrors
-      );
+      const targetStep =
+        stepForErrors(
+          basicErrors,
+          variantErrors,
+          seoErrors
+        );
 
       if (targetStep) {
-        setCurrentStep(targetStep);
+        setCurrentStep(
+          targetStep
+        );
       }
 
       return;
     }
 
-    /*
-     * Final category ID:
-     *
-     * If subcategory exists -> subcategory ID
-     * If parent has no children -> parent ID
-     */
     const finalCategoryId =
       form.subCategoryId ||
       form.categoryId ||
       form.parentCategoryId;
 
-    const numericCategoryId = Number(
-      finalCategoryId
-    );
+    const numericCategoryId =
+      Number(finalCategoryId);
+
+    if (
+      !numericCategoryId ||
+      Number.isNaN(
+        numericCategoryId
+      )
+    ) {
+      setErrors({
+        categoryId:
+          "Please select a category",
+      });
+
+      setCurrentStep(1);
+
+      return;
+    }
+
+    const seoPayload = {
+      ...form.seo,
+      schema: {
+        ...form.seo.schema,
+        // Persist the resolved JSON-LD (custom override if present,
+        // otherwise the auto-generated schema) so the backend/storefront
+        // doesn't need to regenerate it from scratch.
+        resolvedJson:
+          effectiveJsonLd.isValid
+            ? effectiveJsonLd.value
+            : null,
+      },
+    };
 
     const payload = {
       ...(product?.id
         ? {
-            id: product.id,
-          }
+          id: Number(
+            product.id
+          ),
+        }
         : {}),
 
       name: form.name || "",
       title: form.title || "",
       slug: form.slug || "",
       sku: form.sku || "",
-      description: form.description || "",
-      categoryId: numericCategoryId,
+      description:
+        form.description || "",
 
-      brandId: toNumberOrNull(
-        form.brandId
-      ),
+      categoryId:
+        numericCategoryId,
 
-      status: form.status || "active",
+      brandId:
+        toNumberOrNull(
+          form.brandId
+        ),
+
+      status:
+        form.status || "active",
 
       taxRate:
         form.taxRate === "" ||
-        form.taxRate === null ||
-        form.taxRate === undefined
+          form.taxRate === null ||
+          form.taxRate ===
+          undefined
           ? "0"
-          : String(form.taxRate),
+          : String(
+            form.taxRate
+          ),
 
-      isFeatured: Boolean(form.isFeatured),
-      isPopular: Boolean(form.isPopular),
-      isRecent: Boolean(form.isRecent),
-      isTopRated: Boolean(form.isTopRated),
-      isTrending: Boolean(form.isTrending),
+      isFeatured:
+        Boolean(
+          form.isFeatured
+        ),
 
-      featuredimg: form.featuredimg,
+      isPopular:
+        Boolean(
+          form.isPopular
+        ),
 
-      images: form.images || [],
+      isRecent:
+        Boolean(
+          form.isRecent
+        ),
+
+      isTopRated:
+        Boolean(
+          form.isTopRated
+        ),
+
+      isTrending:
+        Boolean(
+          form.isTrending
+        ),
+
+      featuredimg:
+        form.featuredimg || null,
+
+      images:
+        Array.isArray(
+          form.images
+        )
+          ? form.images
+          : [],
 
       keyBenefits:
-        form.keyBenefits || [],
+        Array.isArray(
+          form.keyBenefits
+        )
+          ? form.keyBenefits
+          : [],
 
       howToUse:
-        form.howToUse || [],
+        Array.isArray(
+          form.howToUse
+        )
+          ? form.howToUse
+          : [],
 
       safetyInformation:
-        form.safetyInformation || [],
+        Array.isArray(
+          form.safetyInformation
+        )
+          ? form.safetyInformation
+          : [],
 
       whatToAvoid:
-        form.whatToAvoid || [],
+        Array.isArray(
+          form.whatToAvoid
+        )
+          ? form.whatToAvoid
+          : [],
 
       whoShouldUse:
-        form.whoShouldUse || [],
+        Array.isArray(
+          form.whoShouldUse
+        )
+          ? form.whoShouldUse
+          : [],
 
       whychooseus:
-        form.whychooseus || [],
+        Array.isArray(
+          form.whychooseus
+        )
+          ? form.whychooseus
+          : [],
 
-      faqs: form.faqs || [],
+      faqs:
+        Array.isArray(
+          form.faqs
+        )
+          ? form.faqs
+          : [],
 
-      tags: form.tags || [],
+      tags:
+        Array.isArray(
+          form.tags
+        )
+          ? form.tags
+          : [],
 
-      seo: form.seo || {},
+      seo: seoPayload,
 
       hsnCode:
         form.hsnCode || null,
 
       variants: (
-        form.variants || []
+        Array.isArray(
+          form.variants
+        )
+          ? form.variants
+          : []
       ).map((variant) => ({
-        ...(variant.id
+        ...(variant?.id
           ? {
-              id: variant.id,
-            }
+            id: Number(
+              variant.id
+            ),
+          }
           : {}),
 
-        size: variant.size || "",
+        size:
+          variant?.size || "",
 
-        attributeId: toNumberOrNull(
-          variant.attributeId
-        ),
+        // flavour:
+        //   variant?.flavour ||
+        //   null,
 
-        attributeValue:
-          variant.attributeValue || "",
-
-        price: toNumberOrDefault(
-          variant.price,
-          0
-        ),
+        price:
+          toNumberOrDefault(
+            variant?.price,
+            0
+          ),
 
         discountedPrice:
           toNumberOrNull(
-            variant.discountedPrice
+            variant?.discountedPrice
           ),
 
         stockQuantity:
           toNumberOrDefault(
-            variant.stockQuantity,
+            variant?.stockQuantity,
             0
           ),
 
-        weight: variant.weight || "",
-        length: variant.length || "",
-        height: variant.height || "",
-        wide: variant.wide || "",
+        weight:
+          variant?.weight || "",
+
+        length:
+          variant?.length || "",
+
+        height:
+          variant?.height || "",
+
+        breadth:
+          variant?.breadth || "",
 
         image:
-          variant.image instanceof File
+          variant?.image instanceof
+            File
             ? null
-            : variant.image || null,
+            : variant?.image ||
+            null,
 
         imageFile:
-          variant.imageFile instanceof File
+          variant?.imageFile instanceof
+            File
             ? variant.imageFile
             : null,
+
+        attributes:
+          buildVariantAttributes(
+            variant
+          ),
       })),
     };
 
@@ -1570,559 +2574,475 @@ export default function ProductForm({
   const progress = useMemo(
     () =>
       Math.round(
-        (currentStep / steps.length) * 100
+        (currentStep /
+          steps.length) *
+        100
       ),
     [currentStep]
   );
 
-  const stepHasError = useMemo(() => {
-    return {
-      1:
-        Boolean(errors.name) ||
-        Boolean(errors.slug) ||
-        Boolean(errors.parentCategoryId) ||
-        Boolean(errors.subCategoryId) ||
-        Boolean(errors.taxRate),
-      3: variantsHaveErrors(errors.variants),
-      6: Boolean(errors.canonical),
-    };
-  }, [errors]);
+  const stepHasError =
+    useMemo(() => {
+      return {
+        1:
+          Boolean(errors.name) ||
+          Boolean(errors.slug) ||
+          Boolean(
+            errors.parentCategoryId
+          ) ||
+          Boolean(
+            errors.subCategoryId
+          ) ||
+          Boolean(errors.taxRate),
 
-  /*
-  |--------------------------------------------------------------------------
-  | Category UI
-  |--------------------------------------------------------------------------
-  */
+        3: variantsHaveErrors(
+          errors.variants
+        ),
 
-  function renderCategorySelection() {
-    return (
-      <div className="space-y-4 sm:col-span-2">
-        <div className="flex items-center gap-2">
-          <FolderTree
-            size={17}
-            className="text-primary"
-          />
-
-          <Label className="text-sm font-semibold">
-            Category
-          </Label>
-
-          <span className="text-red-500">
-            *
-          </span>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* ------------------------------------------------------------- */}
-          {/* STEP 1 - PARENT CATEGORY */}
-          {/* ------------------------------------------------------------- */}
-
-          <div className="rounded-2xl border bg-muted/20 p-4">
-            <div className="mb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                  1
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold">
-                    Parent Category
-                  </p>
-
-                  <p className="text-xs text-muted-foreground">
-                    Select the main category
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Select
-              value={
-                form.parentCategoryId ||
-                "none"
-              }
-              onValueChange={
-                handleParentCategoryChange
-              }
-              disabled={loadingCategories}
-            >
-              <SelectTrigger
-                className={`h-11 bg-background ${
-                  errors.parentCategoryId
-                    ? "border-red-400 focus:ring-red-400"
-                    : ""
-                }`}
-              >
-                <SelectValue
-                  placeholder={
-                    loadingCategories
-                      ? "Loading categories..."
-                      : "Select parent category"
-                  }
-                />
-              </SelectTrigger>
-
-              <SelectContent className="max-h-[320px]">
-                <SelectItem value="none">
-                  Select parent category
-                </SelectItem>
-
-                {parentCategories.length ===
-                0 ? (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                    No parent categories found
-                  </div>
-                ) : (
-                  parentCategories.map(
-                    (category) => (
-                      <SelectItem
-                        key={category.id}
-                        value={String(
-                          category.id
-                        )}
-                      >
-                        <span className="flex items-center gap-2">
-                          <FolderTree
-                            size={14}
-                            className="text-primary"
-                          />
-
-                          {category.name}
-
-                          {category.children
-                            ?.length >
-                            0 && (
-                            <span className="text-xs text-muted-foreground">
-                              (
-                              {
-                                category
-                                  .children
-                                  .length
-                              }{" "}
-                              sub)
-                            </span>
-                          )}
-                        </span>
-                      </SelectItem>
-                    )
-                  )
-                )}
-              </SelectContent>
-            </Select>
-
-            <FieldError message={errors.parentCategoryId} />
-
-            {selectedParentCategory && (
-              <div className="mt-3 flex items-center gap-3 rounded-xl border bg-background p-3">
-                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border">
-                  {selectedParentCategory.image ? (
-                    <img
-                      src={
-                        selectedParentCategory.image
-                      }
-                      alt={
-                        selectedParentCategory.name
-                      }
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-muted">
-                      <FolderTree
-                        size={16}
-                        className="text-muted-foreground"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-[11px] text-muted-foreground">
-                    Parent selected
-                  </p>
-
-                  <p className="truncate text-sm font-semibold">
-                    {
-                      selectedParentCategory.name
-                    }
-                  </p>
-                </div>
-
-                <Check
-                  size={17}
-                  className="ml-auto shrink-0 text-green-500"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* ------------------------------------------------------------- */}
-          {/* STEP 2 - SUB CATEGORY */}
-          {/* ------------------------------------------------------------- */}
-
-          <div
-            className={`rounded-2xl border p-4 transition ${
-              form.parentCategoryId
-                ? "bg-muted/20"
-                : "bg-muted/10 opacity-60"
-            }`}
-          >
-            <div className="mb-3">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                    form.parentCategoryId
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  2
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold">
-                    Sub Category
-                  </p>
-
-                  <p className="text-xs text-muted-foreground">
-                    Select the child category
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Select
-              value={
-                form.subCategoryId ||
-                "none"
-              }
-              onValueChange={
-                handleSubCategoryChange
-              }
-              disabled={
-                !form.parentCategoryId ||
-                loadingCategories ||
-                subCategories.length === 0
-              }
-            >
-              <SelectTrigger
-                className={`h-11 bg-background ${
-                  errors.subCategoryId
-                    ? "border-red-400 focus:ring-red-400"
-                    : ""
-                }`}
-              >
-                <SelectValue
-                  placeholder={
-                    !form.parentCategoryId
-                      ? "Select parent first"
-                      : subCategories.length ===
-                        0
-                      ? "No subcategories"
-                      : "Select sub category"
-                  }
-                />
-              </SelectTrigger>
-
-              <SelectContent className="max-h-[320px]">
-                <SelectItem value="none">
-                  Select sub category
-                </SelectItem>
-
-                {subCategories.map(
-                  (category) => (
-                    <SelectItem
-                      key={category.id}
-                      value={String(
-                        category.id
-                      )}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="text-muted-foreground">
-                          └
-                        </span>
-
-                        {category.name}
-                      </span>
-                    </SelectItem>
-                  )
-                )}
-              </SelectContent>
-            </Select>
-
-            <FieldError message={errors.subCategoryId} />
-
-            {!form.parentCategoryId && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                First select a parent category.
-              </p>
-            )}
-
-            {form.parentCategoryId &&
-              subCategories.length ===
-                0 && (
-                <p className="mt-2 text-xs text-amber-600">
-                  This parent category has no
-                  subcategories, so the parent
-                  category will be used.
-                </p>
-              )}
-
-            {selectedSubCategory && (
-              <div className="mt-3 flex items-center gap-3 rounded-xl border bg-background p-3">
-                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border">
-                  {selectedSubCategory.image ? (
-                    <img
-                      src={
-                        selectedSubCategory.image
-                      }
-                      alt={
-                        selectedSubCategory.name
-                      }
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-muted">
-                      <FolderTree
-                        size={16}
-                        className="text-muted-foreground"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-[11px] text-muted-foreground">
-                    Sub category selected
-                  </p>
-
-                  <p className="truncate text-sm font-semibold">
-                    {
-                      selectedSubCategory.name
-                    }
-                  </p>
-
-                  <p className="truncate text-xs text-muted-foreground">
-                    {
-                      selectedParentCategory?.name
-                    }{" "}
-                    →{" "}
-                    {
-                      selectedSubCategory.name
-                    }
-                  </p>
-                </div>
-
-                <Check
-                  size={17}
-                  className="ml-auto shrink-0 text-green-500"
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Final selection */}
-        {(selectedParentCategory ||
-          selectedSubCategory) && (
-          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">
-                  Final Product Category
-                </p>
-
-                <p className="mt-1 text-sm font-semibold">
-                  {selectedSubCategory
-                    ? `${selectedParentCategory?.name} → ${selectedSubCategory.name}`
-                    : selectedParentCategory?.name}
-                </p>
-              </div>
-
-              <div className="rounded-lg bg-background px-3 py-2 text-xs">
-                <span className="text-muted-foreground">
-                  Category ID:{" "}
-                </span>
-
-                <span className="font-semibold">
-                  {form.categoryId ||
-                    form.parentCategoryId}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  function renderStepIndicator() {
-    return (
-      <div className="w-full">
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold">
-              Product Setup
-            </p>
-
-            <p className="text-xs text-muted-foreground">
-              Step {currentStep} of{" "}
-              {steps.length}
-            </p>
-          </div>
-
-          <div className="rounded-full bg-muted px-3 py-1 text-xs font-semibold">
-            {progress}%
-          </div>
-        </div>
-
-        <div className="mb-5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-300"
-            style={{
-              width: `${progress}%`,
-            }}
-          />
-        </div>
-
-        <div className="-mx-1 overflow-x-auto pb-2">
-          <div className="flex min-w-max gap-2 px-1">
-            {steps.map((step) => {
-              const Icon = step.icon;
-
-              const active =
-                currentStep === step.id;
-
-              const completed =
-                currentStep > step.id;
-
-              const invalid = Boolean(
-                stepHasError[step.id]
-              );
-
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() =>
-                    goToStep(step.id)
-                  }
-                  className={`flex min-w-[145px] items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all sm:min-w-[155px] ${
-                    invalid
-                      ? "border-red-300 bg-red-50"
-                      : active
-                      ? "border-primary bg-primary/10 shadow-sm"
-                      : completed
-                      ? "border-primary/20 bg-primary/5 hover:border-primary/40"
-                      : "border-border bg-background hover:border-primary/30 hover:bg-muted/50"
-                  }`}
-                >
-                  <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                      invalid
-                        ? "bg-red-500 text-white"
-                        : active
-                        ? "bg-primary text-primary-foreground"
-                        : completed
-                        ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {invalid ? (
-                      <AlertCircle size={17} />
-                    ) : completed ? (
-                      <Check size={17} />
-                    ) : (
-                      <Icon size={17} />
-                    )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <p
-                      className={`truncate text-xs font-semibold sm:text-sm ${
-                        invalid
-                          ? "text-red-600"
-                          : active
-                          ? "text-primary"
-                          : ""
-                      }`}
-                    >
-                      {step.title}
-                    </p>
-
-                    <p className="truncate text-[10px] text-muted-foreground sm:text-xs">
-                      {invalid
-                        ? "Needs attention"
-                        : step.description}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  }
+        6:
+          Boolean(
+            errors.canonical
+          ) ||
+          Boolean(
+            errors.schemaJson
+          ),
+      };
+    }, [errors]);
 
   function renderErrorSummary() {
     const messages = [];
 
-    if (errors.name) messages.push(errors.name);
-    if (errors.slug) messages.push(errors.slug);
-    if (errors.parentCategoryId)
-      messages.push(errors.parentCategoryId);
-    if (errors.subCategoryId)
-      messages.push(errors.subCategoryId);
-    if (errors.taxRate) messages.push(errors.taxRate);
-    if (errors.canonical) messages.push(errors.canonical);
+    if (errors.name) {
+      messages.push(
+        errors.name
+      );
+    }
 
-    (errors.variants || []).forEach((variantErrors, index) => {
-      Object.values(variantErrors || {}).forEach((message) => {
-        messages.push(`Variant ${index + 1}: ${message}`);
-      });
-    });
+    if (errors.slug) {
+      messages.push(
+        errors.slug
+      );
+    }
+
+    if (
+      errors.parentCategoryId
+    ) {
+      messages.push(
+        errors.parentCategoryId
+      );
+    }
+
+    if (errors.subCategoryId) {
+      messages.push(
+        errors.subCategoryId
+      );
+    }
+
+    if (errors.taxRate) {
+      messages.push(
+        errors.taxRate
+      );
+    }
+
+    if (errors.canonical) {
+      messages.push(
+        errors.canonical
+      );
+    }
+
+    if (errors.schemaJson) {
+      messages.push(
+        errors.schemaJson
+      );
+    }
+
+    (
+      errors.variants || []
+    ).forEach(
+      (
+        variantErrors,
+        index
+      ) => {
+        Object.values(
+          variantErrors || {}
+        ).forEach(
+          (message) => {
+            messages.push(
+              `Variant ${index + 1
+              }: ${message}`
+            );
+          }
+        );
+      }
+    );
 
     if (!messages.length) {
       return null;
     }
 
     return (
-      <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4">
-        <div className="flex items-start gap-2">
-          <AlertCircle
-            size={18}
-            className="mt-0.5 shrink-0 text-red-500"
-          />
+      <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/60 dark:bg-red-950/30">
+        <AlertCircle
+          size={18}
+          className="mt-0.5 shrink-0 text-red-500"
+        />
 
-          <div>
-            <p className="text-sm font-semibold text-red-700">
-              Please fix the following before saving:
-            </p>
+        <div>
+          <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+            Fix the following before continuing
+          </p>
 
-            <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs text-red-600">
-              {messages.map((message, index) => (
-                <li key={index}>{message}</li>
-              ))}
-            </ul>
-          </div>
+          <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-xs text-red-600 dark:text-red-400/90">
+            {messages.map(
+              (message, index) => (
+                <li key={index}>
+                  {message}
+                </li>
+              )
+            )}
+          </ul>
         </div>
       </div>
     );
   }
 
+  function renderCategorySelection() {
+    const accent = getStepAccent(1);
+
+    return (
+      <div className="space-y-3 sm:col-span-2">
+        <div className="rounded-xl border bg-muted/20 p-4">
+          <div className="mb-3 flex items-center gap-2.5">
+            <div
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${accent.solid}`}
+            >
+              1
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold">
+                Parent Category
+              </p>
+
+              <p className="text-xs text-muted-foreground">
+                Select the parent category first
+              </p>
+            </div>
+          </div>
+
+          <Select
+            value={
+              form.parentCategoryId ||
+              "none"
+            }
+            onValueChange={
+              handleParentCategoryChange
+            }
+            disabled={
+              loadingCategories
+            }
+          >
+            <SelectTrigger
+              className={`h-11 bg-background ${errors.parentCategoryId
+                ? "border-red-400 focus:ring-red-400"
+                : ""
+                }`}
+            >
+              <SelectValue
+                placeholder={
+                  loadingCategories
+                    ? "Loading categories..."
+                    : "Select parent category"
+                }
+              />
+            </SelectTrigger>
+
+            <SelectContent className="max-h-[320px]">
+              <SelectItem value="none">
+                Select parent category
+              </SelectItem>
+
+              {parentCategories.map(
+                (category) => (
+                  <SelectItem
+                    key={category.id}
+                    value={String(
+                      category.id
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <FolderTree
+                        size={14}
+                        className={accent.icon}
+                      />
+
+                      {category.name}
+
+                      {category.children
+                        ?.length >
+                        0 && (
+                          <span className="text-xs text-muted-foreground">
+                            (
+                            {
+                              category
+                                .children
+                                .length
+                            }{" "}
+                            sub)
+                          </span>
+                        )}
+                    </span>
+                  </SelectItem>
+                )
+              )}
+            </SelectContent>
+          </Select>
+
+          <FieldError
+            message={
+              errors.parentCategoryId
+            }
+          />
+
+          {selectedParentCategory && (
+            <div className="mt-3 flex items-center gap-3 rounded-lg border bg-background p-3">
+              <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border">
+                {selectedParentCategory.image ? (
+                  <img
+                    src={
+                      selectedParentCategory.image
+                    }
+                    alt={
+                      selectedParentCategory.name
+                    }
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-muted">
+                    <FolderTree
+                      size={16}
+                      className="text-muted-foreground"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-[11px] text-muted-foreground">
+                  Parent selected
+                </p>
+
+                <p className="truncate text-sm font-semibold">
+                  {
+                    selectedParentCategory.name
+                  }
+                </p>
+              </div>
+
+              <Check
+                size={17}
+                className="ml-auto shrink-0 text-emerald-500"
+              />
+            </div>
+          )}
+        </div>
+
+        <div
+          className={`rounded-xl border bg-muted/20 p-4 transition-opacity ${!form.parentCategoryId ? "opacity-60" : ""
+            }`}
+        >
+          <div className="mb-3 flex items-center gap-2.5">
+            <div
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${form.parentCategoryId
+                ? `text-white ${accent.solid}`
+                : "bg-muted text-muted-foreground"
+                }`}
+            >
+              2
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold">
+                Sub Category
+              </p>
+
+              <p className="text-xs text-muted-foreground">
+                Select the child category
+              </p>
+            </div>
+          </div>
+
+          <Select
+            value={
+              form.subCategoryId ||
+              "none"
+            }
+            onValueChange={
+              handleSubCategoryChange
+            }
+            disabled={
+              !form.parentCategoryId ||
+              loadingCategories ||
+              subCategories.length ===
+              0
+            }
+          >
+            <SelectTrigger
+              className={`h-11 bg-background ${errors.subCategoryId
+                ? "border-red-400 focus:ring-red-400"
+                : ""
+                }`}
+            >
+              <SelectValue
+                placeholder={
+                  !form.parentCategoryId
+                    ? "Select parent first"
+                    : subCategories.length ===
+                      0
+                      ? "No subcategories"
+                      : "Select sub category"
+                }
+              />
+            </SelectTrigger>
+
+            <SelectContent className="max-h-[320px]">
+              <SelectItem value="none">
+                Select sub category
+              </SelectItem>
+
+              {subCategories.map(
+                (category) => (
+                  <SelectItem
+                    key={category.id}
+                    value={String(
+                      category.id
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-muted-foreground">
+                        └
+                      </span>
+
+                      {category.name}
+                    </span>
+                  </SelectItem>
+                )
+              )}
+            </SelectContent>
+          </Select>
+
+          <FieldError
+            message={
+              errors.subCategoryId
+            }
+          />
+
+          {!form.parentCategoryId && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              First select a parent category.
+            </p>
+          )}
+
+          {form.parentCategoryId &&
+            subCategories.length ===
+            0 && (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                <AlertCircle size={12} className="shrink-0" />
+                No subcategories here, so the parent category will be used directly.
+              </p>
+            )}
+
+          {selectedSubCategory && (
+            <div className="mt-3 flex items-center gap-3 rounded-lg border bg-background p-3">
+              <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border">
+                {selectedSubCategory.image ? (
+                  <img
+                    src={
+                      selectedSubCategory.image
+                    }
+                    alt={
+                      selectedSubCategory.name
+                    }
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-muted">
+                    <FolderTree
+                      size={16}
+                      className="text-muted-foreground"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-[11px] text-muted-foreground">
+                  Sub category selected
+                </p>
+
+                <p className="truncate text-sm font-semibold">
+                  {
+                    selectedParentCategory?.name
+                  }{" "}
+                  →{" "}
+                  {
+                    selectedSubCategory.name
+                  }
+                </p>
+              </div>
+
+              <Check
+                size={17}
+                className="ml-auto shrink-0 text-emerald-500"
+              />
+            </div>
+          )}
+        </div>
+
+        {(selectedParentCategory ||
+          selectedSubCategory) && (
+            <div className={`rounded-xl border p-4 ${accent.border} ${accent.chip}`}>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Final Product Category
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold">
+                    {selectedSubCategory
+                      ? `${selectedParentCategory?.name} → ${selectedSubCategory.name}`
+                      : selectedParentCategory?.name}
+                  </p>
+                </div>
+
+                <div className="rounded-lg bg-background px-3 py-2 text-xs">
+                  <span className="text-muted-foreground">
+                    Category ID:{" "}
+                  </span>
+
+                  <span className="font-semibold">
+                    {form.categoryId ||
+                      form.parentCategoryId}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+      </div>
+    );
+  }
+
   function renderBasicInfo() {
+    const accent = getStepAccent(1);
+
     return (
       <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold sm:text-xl">
-            Basic Information
-          </h3>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add the primary information for
-            your product.
-          </p>
-        </div>
+        <SectionHeading
+          icon={Package}
+          accent={accent}
+          title="Basic Information"
+          description="Add the primary information for your product."
+        />
 
         {renderErrorSummary()}
 
@@ -2143,19 +3063,23 @@ export default function ProductForm({
                   event.target.value
                 )
               }
-              placeholder="e.g. Test Product 5"
+              placeholder="e.g. Test Product"
               className={
                 errors.name
-                  ? "border-red-400 focus-visible:ring-red-400"
+                  ? "border-red-400"
                   : ""
               }
             />
 
-            <FieldError message={errors.name} />
+            <FieldError
+              message={errors.name}
+            />
           </div>
 
           <div className="grid gap-2">
-            <Label>Product Title</Label>
+            <Label>
+              Product Title
+            </Label>
 
             <Input
               value={form.title}
@@ -2183,12 +3107,14 @@ export default function ProductForm({
               placeholder="product-slug"
               className={
                 errors.slug
-                  ? "border-red-400 focus-visible:ring-red-400"
+                  ? "border-red-400"
                   : ""
               }
             />
 
-            <FieldError message={errors.slug} />
+            <FieldError
+              message={errors.slug}
+            />
           </div>
 
           <div className="grid gap-2">
@@ -2213,7 +3139,8 @@ export default function ProductForm({
 
             <Select
               value={
-                form.brandId || "none"
+                form.brandId ||
+                "none"
               }
               onValueChange={(value) =>
                 handleChange(
@@ -2223,9 +3150,11 @@ export default function ProductForm({
                     : value
                 )
               }
-              disabled={loadingBrands}
+              disabled={
+                loadingBrands
+              }
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-11">
                 <SelectValue
                   placeholder={
                     loadingBrands
@@ -2235,28 +3164,99 @@ export default function ProductForm({
                 />
               </SelectTrigger>
 
-              <SelectContent>
+              <SelectContent className="max-h-[320px]">
                 <SelectItem value="none">
                   No Brand
                 </SelectItem>
 
-                {brands.map((brand) => (
-                  <SelectItem
-                    key={brand.id}
-                    value={String(
-                      brand.id
-                    )}
-                  >
-                    {brand.name}
-                  </SelectItem>
-                ))}
+                {brands.map(
+                  (brand) => (
+                    <SelectItem
+                      key={brand.id}
+                      value={String(
+                        brand.id
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        {brand.logo ? (
+                          <img
+                            src={
+                              brand.logo
+                            }
+                            alt=""
+                            className="h-6 w-6 rounded-md border object-contain"
+                          />
+                        ) : (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-[10px] font-bold">
+                            {brand.name
+                              ?.charAt(
+                                0
+                              )
+                              ?.toUpperCase()}
+                          </div>
+                        )}
+
+                        <span>
+                          {
+                            brand.name
+                          }
+                        </span>
+                      </div>
+                    </SelectItem>
+                  )
+                )}
               </SelectContent>
             </Select>
+
+            {selectedBrand && (
+              <div className="flex items-center gap-3 rounded-lg border bg-muted/20 p-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-background">
+                  {selectedBrand.logo ? (
+                    <img
+                      src={
+                        selectedBrand.logo
+                      }
+                      alt={
+                        selectedBrand.name
+                      }
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-sm font-bold text-muted-foreground">
+                      {selectedBrand.name
+                        ?.charAt(
+                          0
+                        )
+                        ?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-[11px] text-muted-foreground">
+                    Selected Brand
+                  </p>
+
+                  <p className="truncate text-sm font-semibold">
+                    {
+                      selectedBrand.name
+                    }
+                  </p>
+                </div>
+
+                <Check
+                  size={17}
+                  className="ml-auto shrink-0 text-emerald-500"
+                />
+              </div>
+            )}
           </div>
         </div>
 
         <div className="grid gap-2">
-          <Label>Description</Label>
+          <Label>
+            Description
+          </Label>
 
           <Textarea
             value={form.description}
@@ -2289,7 +3289,9 @@ export default function ProductForm({
           </div>
 
           <div className="grid gap-2">
-            <Label>Tax Rate (%)</Label>
+            <Label>
+              Tax Rate (%)
+            </Label>
 
             <Input
               type="number"
@@ -2303,12 +3305,14 @@ export default function ProductForm({
               placeholder="0"
               className={
                 errors.taxRate
-                  ? "border-red-400 focus-visible:ring-red-400"
+                  ? "border-red-400"
                   : ""
               }
             />
 
-            <FieldError message={errors.taxRate} />
+            <FieldError
+              message={errors.taxRate}
+            />
           </div>
         </div>
       </div>
@@ -2316,37 +3320,36 @@ export default function ProductForm({
   }
 
   function renderImages() {
+    const accent = getStepAccent(2);
+
     const featuredPreview =
-      getImagePreview(form.featuredimg);
+      getImagePreview(
+        form.featuredimg
+      );
 
     return (
       <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold sm:text-xl">
-            Product Images
-          </h3>
+        <SectionHeading
+          icon={Images}
+          accent={accent}
+          title="Product Images"
+          description="Add your main product image and gallery images."
+        />
 
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add your main product image and
-            gallery images.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border bg-muted/20 p-4 sm:p-6">
+        <div className="rounded-xl border bg-muted/20 p-4 sm:p-6">
           <div className="mb-5">
             <h4 className="font-semibold">
               Featured Image
             </h4>
 
             <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-              The main image shown on product
-              cards and product pages.
+              The main image shown on product cards and product pages.
             </p>
           </div>
 
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             {featuredPreview ? (
-              <div className="relative w-fit">
+              <div className="group relative w-fit">
                 <img
                   src={featuredPreview}
                   alt="Featured product"
@@ -2358,24 +3361,26 @@ export default function ProductForm({
                   onClick={
                     removeFeaturedImage
                   }
-                  className="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white shadow-md hover:bg-red-600"
+                  className="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white shadow-md transition-colors hover:bg-red-600"
                 >
                   <X size={15} />
                 </button>
               </div>
             ) : (
-              <label className="flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-background text-center transition hover:border-primary hover:bg-primary/5 sm:h-44 sm:w-44">
+              <label
+                className={`flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-background text-center transition-colors hover:border-current sm:h-44 sm:w-44 ${accent.icon}`}
+              >
                 <ImagePlus
-                  size={32}
-                  className="mb-2 text-muted-foreground"
+                  size={30}
+                  className="mb-2"
                 />
 
-                <span className="text-sm font-semibold">
+                <span className="text-sm font-semibold text-foreground">
                   Add Image
                 </span>
 
                 <span className="mt-1 text-xs text-muted-foreground">
-                  JPG, PNG, WEBP
+                  JPG, PNG, WEBP · up to 5MB
                 </span>
 
                 <input
@@ -2389,42 +3394,39 @@ export default function ProductForm({
               </label>
             )}
 
-            <div>
-              <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border bg-background px-4 py-3 text-sm font-medium transition hover:bg-muted sm:w-auto">
-                <Upload size={16} />
+            <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-muted sm:w-auto">
+              <Upload size={16} />
 
-                {featuredPreview
-                  ? "Change Image"
-                  : "Upload Image"}
+              {featuredPreview
+                ? "Change Image"
+                : "Upload Image"}
 
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={
-                    handleFeaturedImage
-                  }
-                />
-              </label>
-            </div>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={
+                  handleFeaturedImage
+                }
+              />
+            </label>
           </div>
         </div>
 
-        <div className="rounded-2xl border bg-muted/20 p-4 sm:p-6">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="rounded-xl border bg-muted/20 p-4 sm:p-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h4 className="font-semibold">
                 Product Gallery
               </h4>
 
-              <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                Upload multiple images for
-                the product gallery.
+              <p className="mt-1 text-xs text-muted-foreground">
+                Add additional product images.
               </p>
             </div>
 
-            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border bg-background px-4 py-2.5 text-sm font-medium hover:bg-muted">
-              <Plus size={16} />
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-muted">
+              <Upload size={15} />
               Add Images
 
               <input
@@ -2439,56 +3441,34 @@ export default function ProductForm({
             </label>
           </div>
 
-          <label className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-background px-5 text-center transition hover:border-primary hover:bg-primary/5 sm:min-h-[220px]">
-            <Images
-              size={40}
-              className="mb-3 text-muted-foreground"
-            />
-
-            <p className="font-semibold">
-              Add product gallery images
-            </p>
-
-            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-              Select multiple images at once
-            </p>
-
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={
-                handleGalleryImages
-              }
-            />
-          </label>
-
-          {form.images?.length > 0 && (
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {form.images?.length >
+            0 ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {form.images.map(
                 (image, index) => {
                   const preview =
-                    getImagePreview(image);
+                    getImagePreview(
+                      image
+                    );
 
                   return (
                     <div
-                      key={`${index}-${typeof image === "string" ? image : image?.name}`}
+                      key={index}
                       className="group relative overflow-hidden rounded-2xl border bg-background"
                     >
                       {preview && (
                         <img
                           src={preview}
-                          alt={`Product image ${
-                            index + 1
-                          }`}
+                          alt={`Product image ${index + 1
+                            }`}
                           className="aspect-square w-full object-cover"
                         />
                       )}
 
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-8">
                         <span className="text-xs font-semibold text-white">
-                          Image {index + 1}
+                          Image{" "}
+                          {index + 1}
                         </span>
                       </div>
 
@@ -2499,7 +3479,7 @@ export default function ProductForm({
                             index
                           )
                         }
-                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white shadow opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"
+                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow transition-opacity group-hover:opacity-100 sm:opacity-100"
                       >
                         <X size={14} />
                       </button>
@@ -2508,6 +3488,16 @@ export default function ProductForm({
                 }
               )}
             </div>
+          ) : (
+            <div className={`flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed p-10 text-center ${accent.icon}`}>
+              <Images size={28} />
+              <p className="text-sm font-medium text-foreground">
+                No gallery images yet
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Use "Add Images" above to upload a few.
+              </p>
+            </div>
           )}
         </div>
       </div>
@@ -2515,25 +3505,23 @@ export default function ProductForm({
   }
 
   function renderVariants() {
+    const accent = getStepAccent(3);
+
     return (
       <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h3 className="text-lg font-semibold sm:text-xl">
-              Product Variants
-            </h3>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-              Configure pricing, stock,
-              dimensions and images.
-            </p>
-          </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <SectionHeading
+            icon={Layers3}
+            accent={accent}
+            title="Product Variants"
+            description="Configure pricing, stock, dimensions, attributes and images."
+          />
 
           <Button
             type="button"
             variant="outline"
             onClick={addVariant}
-            className="w-full sm:w-auto"
+            className="w-full shrink-0 sm:w-auto"
           >
             <Plus
               size={16}
@@ -2554,57 +3542,106 @@ export default function ProductForm({
                 );
 
               const variantErrors =
-                errors.variants?.[index] || {};
+                errors.variants?.[
+                index
+                ] || {};
+
+              const hasVariantError =
+                Object.keys(variantErrors).length > 0;
+
+              const selectedAttribute =
+                variant.attributes?.[0] ||
+                null;
+
+              const selectedAttributeDefinition =
+                selectedAttribute?.id
+                  ? attributes.find(
+                    (attribute) =>
+                      Number(
+                        attribute.id
+                      ) ===
+                      Number(
+                        selectedAttribute.id
+                      )
+                  )
+                  : null;
+
+              const attributeName =
+                selectedAttribute
+                  ?.name ||
+                selectedAttributeDefinition
+                  ?.name ||
+                "";
+
+              const attributeUnit =
+                selectedAttribute
+                  ?.unit ||
+                selectedAttributeDefinition
+                  ?.unit ||
+                "";
 
               return (
                 <div
                   key={
-                    variant.id || index
+                    variant.id ||
+                    index
                   }
-                  className={`overflow-hidden rounded-2xl border bg-muted/20 ${
-                    Object.keys(variantErrors)
-                      .length > 0
-                      ? "border-red-300"
-                      : ""
-                  }`}
+                  className={`overflow-hidden rounded-xl border-l-4 bg-muted/20 ${hasVariantError
+                    ? "border-l-red-400 border-y-red-200 border-r-red-200"
+                    : `${accent.border} border-l-current ${accent.icon}`
+                    }`}
                 >
                   <div className="flex items-center justify-between border-b bg-background px-4 py-4 sm:px-5">
-                    <div>
-                      <p className="font-semibold">
-                        Variant {index + 1}
-                      </p>
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white ${hasVariantError ? "bg-red-500" : accent.solid
+                          }`}
+                      >
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          Variant{" "}
+                          {index + 1}
+                        </p>
 
-                      <p className="text-xs text-muted-foreground">
-                        Variant configuration
-                      </p>
+                        <p className="text-xs text-muted-foreground">
+                          {hasVariantError
+                            ? "Needs attention"
+                            : "Variant configuration"}
+                        </p>
+                      </div>
                     </div>
 
-                    {form.variants.length >
-                      1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          removeVariant(
-                            index
-                          )
-                        }
-                        className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                      >
-                        <Trash2 size={17} />
-                      </Button>
-                    )}
+                    {form.variants
+                      .length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            removeVariant(
+                              index
+                            )
+                          }
+                          className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                        >
+                          <X size={17} />
+                        </Button>
+                      )}
                   </div>
 
                   <div className="space-y-6 p-4 sm:p-5">
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       <div className="grid gap-2">
-                        <Label>Size</Label>
+                        <Label>
+                          Size
+                        </Label>
 
                         <Input
                           value={
-                            variant.size
+                            variant.size ??
+                            ""
                           }
                           onChange={(
                             event
@@ -2621,32 +3658,31 @@ export default function ProductForm({
                       </div>
 
                       <div className="grid gap-2">
-                        <Label>Attribute</Label>
+                        <Label>
+                          Attribute
+                        </Label>
 
                         <Select
                           value={
-                            variant.attributeId
+                            selectedAttribute?.id
                               ? String(
-                                  variant.attributeId
-                                )
+                                selectedAttribute.id
+                              )
                               : "none"
                           }
                           onValueChange={(
                             value
                           ) =>
-                            handleVariantChange(
+                            handleVariantAttributeChange(
                               index,
-                              "attributeId",
-                              value === "none"
-                                ? ""
-                                : value
+                              value
                             )
                           }
                           disabled={
                             loadingAttributes
                           }
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-11">
                             <SelectValue
                               placeholder={
                                 loadingAttributes
@@ -2656,13 +3692,15 @@ export default function ProductForm({
                             />
                           </SelectTrigger>
 
-                          <SelectContent>
+                          <SelectContent className="max-h-[320px]">
                             <SelectItem value="none">
                               Select attribute
                             </SelectItem>
 
                             {attributes.map(
-                              (attribute) => (
+                              (
+                                attribute
+                              ) => (
                                 <SelectItem
                                   key={
                                     attribute.id
@@ -2671,9 +3709,23 @@ export default function ProductForm({
                                     attribute.id
                                   )}
                                 >
-                                  {
-                                    attribute.name
-                                  }
+                                  <div className="flex items-center gap-2">
+                                    <span>
+                                      {
+                                        attribute.name
+                                      }
+                                    </span>
+
+                                    {attribute.unit && (
+                                      <span className="text-xs text-muted-foreground">
+                                        (
+                                        {
+                                          attribute.unit
+                                        }
+                                        )
+                                      </span>
+                                    )}
+                                  </div>
                                 </SelectItem>
                               )
                             )}
@@ -2683,29 +3735,50 @@ export default function ProductForm({
 
                       <div className="grid gap-2">
                         <Label>
-                          Attribute Value
+                          {attributeName
+                            ? `${attributeName} Value`
+                            : "Attribute Value"}
                         </Label>
 
-                        <Input
-                          value={
-                            variant.attributeValue ??
-                            ""
-                          }
-                          onChange={(
-                            event
-                          ) =>
-                            handleVariantChange(
-                              index,
-                              "attributeValue",
-                              event.target
-                                .value
-                            )
-                          }
-                          placeholder="e.g. Chocolate"
-                          disabled={
-                            !variant.attributeId
-                          }
-                        />
+                        <div className="relative">
+                          <Input
+                            value={
+                              selectedAttribute?.value ??
+                              ""
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              handleVariantAttributeValueChange(
+                                index,
+                                event
+                                  .target
+                                  .value
+                              )
+                            }
+                            placeholder={
+                              attributeName
+                                ? `Enter ${attributeName.toLowerCase()}`
+                                : "Enter attribute value"
+                            }
+                            disabled={
+                              !selectedAttribute
+                            }
+                            className={
+                              attributeUnit
+                                ? "pr-16"
+                                : ""
+                            }
+                          />
+
+                          {attributeUnit && (
+                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+                              {
+                                attributeUnit
+                              }
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="grid gap-2">
@@ -2732,10 +3805,10 @@ export default function ProductForm({
                                 .value
                             )
                           }
-                          placeholder="499"
+                          placeholder="495"
                           className={
                             variantErrors.price
-                              ? "border-red-400 focus-visible:ring-red-400"
+                              ? "border-red-400"
                               : ""
                           }
                         />
@@ -2771,7 +3844,7 @@ export default function ProductForm({
                           placeholder="399"
                           className={
                             variantErrors.discountedPrice
-                              ? "border-red-400 focus-visible:ring-red-400"
+                              ? "border-red-400"
                               : ""
                           }
                         />
@@ -2808,9 +3881,10 @@ export default function ProductForm({
                             )
                           }
                           placeholder="20"
+                          min="0"
                           className={
                             variantErrors.stockQuantity
-                              ? "border-red-400 focus-visible:ring-red-400"
+                              ? "border-red-400"
                               : ""
                           }
                         />
@@ -2823,7 +3897,9 @@ export default function ProductForm({
                       </div>
 
                       <div className="grid gap-2">
-                        <Label>Weight</Label>
+                        <Label>
+                          Weight
+                        </Label>
 
                         <Input
                           value={
@@ -2840,10 +3916,61 @@ export default function ProductForm({
                                 .value
                             )
                           }
-                          placeholder="0.5"
+                          placeholder="0.1"
                         />
                       </div>
                     </div>
+
+                    {selectedAttribute && (
+                      <div className={`rounded-xl border p-4 ${accent.border} ${accent.chip}`}>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              Selected Attribute
+                            </p>
+
+                            <p className="mt-1 text-base font-semibold">
+                              {
+                                attributeName
+                              }
+                            </p>
+                          </div>
+
+                          <div className="w-fit rounded-xl border bg-background px-4 py-2.5">
+                            <span className="text-sm font-semibold">
+                              {selectedAttribute.value ||
+                                "—"}
+                            </span>
+
+                            {attributeUnit && (
+                              <span className="ml-1 text-sm text-muted-foreground">
+                                {
+                                  attributeUnit
+                                }
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 rounded-lg bg-background/70 px-3 py-2.5">
+                          <p className="text-[11px] font-medium text-muted-foreground">
+                            Display value
+                          </p>
+
+                          <p className="mt-0.5 text-sm font-semibold">
+                            {
+                              attributeName
+                            }
+                            :{" "}
+                            {selectedAttribute.value ||
+                              "—"}
+                            {attributeUnit
+                              ? ` ${attributeUnit}`
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <p className="mb-3 text-sm font-semibold">
@@ -2871,6 +3998,7 @@ export default function ProductForm({
                                   .value
                               )
                             }
+                            placeholder="10"
                           />
                         </div>
 
@@ -2894,17 +4022,18 @@ export default function ProductForm({
                                   .value
                               )
                             }
+                            placeholder="10"
                           />
                         </div>
 
                         <div className="grid gap-2">
                           <Label>
-                            wide
+                            Breadth
                           </Label>
 
                           <Input
                             value={
-                              variant.wide ??
+                              variant.breadth ??
                               ""
                             }
                             onChange={(
@@ -2912,11 +4041,12 @@ export default function ProductForm({
                             ) =>
                               handleVariantChange(
                                 index,
-                                "wide",
+                                "breadth",
                                 event.target
                                   .value
                               )
                             }
+                            placeholder="10"
                           />
                         </div>
                       </div>
@@ -2932,9 +4062,8 @@ export default function ProductForm({
                           <div className="relative">
                             <img
                               src={preview}
-                              alt={`Variant ${
-                                index + 1
-                              }`}
+                              alt={`Variant ${index + 1
+                                }`}
                               className="h-28 w-28 rounded-xl border bg-background object-cover"
                             />
 
@@ -2947,13 +4076,19 @@ export default function ProductForm({
                               }
                               className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-white shadow"
                             >
-                              <X size={14} />
+                              <X
+                                size={
+                                  14
+                                }
+                              />
                             </button>
                           </div>
                         )}
 
-                        <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border bg-background px-4 py-3 text-sm font-medium hover:bg-muted sm:w-auto">
-                          <Upload size={16} />
+                        <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-muted sm:w-auto">
+                          <Upload
+                            size={16}
+                          />
 
                           {preview
                             ? "Change Image"
@@ -2986,6 +4121,8 @@ export default function ProductForm({
   }
 
   function renderDetails() {
+    const accent = getStepAccent(4);
+
     const fields = [
       [
         "keyBenefits",
@@ -3021,29 +4158,29 @@ export default function ProductForm({
 
     return (
       <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold sm:text-xl">
-            Product Details
-          </h3>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add detailed information about
-            your product.
-          </p>
-        </div>
+        <SectionHeading
+          icon={FileText}
+          accent={accent}
+          title="Product Details"
+          description="Add detailed information about your product."
+        />
 
         <div className="grid gap-5 lg:grid-cols-2">
           {fields.map(
-            ([field, label, description]) => (
+            ([
+              field,
+              label,
+              description,
+            ]) => (
               <div
                 key={field}
-                className="rounded-2xl border bg-muted/20 p-4 sm:p-5"
+                className="rounded-xl border bg-muted/20 p-4 sm:p-5"
               >
-                <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <h4 className="font-semibold">
+                    <p className="font-semibold">
                       {label}
-                    </h4>
+                    </p>
 
                     <p className="mt-1 text-xs text-muted-foreground">
                       {description}
@@ -3055,7 +4192,9 @@ export default function ProductForm({
                     size="sm"
                     variant="outline"
                     onClick={() =>
-                      addArrayItem(field)
+                      addArrayItem(
+                        field
+                      )
                     }
                   >
                     <Plus
@@ -3066,54 +4205,69 @@ export default function ProductForm({
                   </Button>
                 </div>
 
-                <div className="space-y-2">
-                  {(form[field] || []).map(
-                    (value, index) => (
-                      <div
-                        key={index}
-                        className="flex gap-2"
-                      >
-                        <Input
-                          value={value}
-                          onChange={(
-                            event
-                          ) =>
-                            handleArrayChange(
-                              field,
-                              index,
-                              event.target
-                                .value
-                            )
-                          }
-                          placeholder={`${label} ${
-                            index + 1
-                          }`}
-                        />
-
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="outline"
-                          onClick={() =>
-                            removeArrayItem(
-                              field,
-                              index
-                            )
-                          }
-                          className="shrink-0 text-red-500 hover:text-red-600"
+                {(form[field] || []).length > 0 ? (
+                  <div className="space-y-2">
+                    {(
+                      form[field] || []
+                    ).map(
+                      (
+                        value,
+                        index
+                      ) => (
+                        <div
+                          key={index}
+                          className="flex gap-2"
                         >
-                          <X size={16} />
-                        </Button>
-                      </div>
-                    )
-                  )}
-                </div>
+                          <Input
+                            value={
+                              value
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              handleArrayChange(
+                                field,
+                                index,
+                                event
+                                  .target
+                                  .value
+                              )
+                            }
+                            placeholder={`${label} ${index + 1
+                              }`}
+                          />
+
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            onClick={() =>
+                              removeArrayItem(
+                                field,
+                                index
+                              )
+                            }
+                            className="shrink-0 text-red-500"
+                          >
+                            <X
+                              size={16}
+                            />
+                          </Button>
+                        </div>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <p className={`rounded-lg border border-dashed px-3 py-2.5 text-xs ${accent.icon} border-current/30`}>
+                    Nothing added yet — click "Add" to get started.
+                  </p>
+                )}
               </div>
             )
           )}
         </div>
 
-        <div className="rounded-2xl border bg-muted/20 p-4 sm:p-5">
+        <div className="rounded-xl border bg-muted/20 p-4 sm:p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h4 className="font-semibold">
@@ -3141,171 +4295,150 @@ export default function ProductForm({
             </Button>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {(form.tags || []).map(
-              (tag, index) => (
-                <div
-                  key={index}
-                  className="flex gap-2"
-                >
-                  <Input
-                    value={tag}
-                    onChange={(event) =>
-                      handleArrayChange(
-                        "tags",
-                        index,
-                        event.target.value
-                      )
-                    }
-                    placeholder="e.g. protein"
-                  />
-
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    onClick={() =>
-                      removeArrayItem(
-                        "tags",
-                        index
-                      )
-                    }
+          {(form.tags || []).length > 0 ? (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {(form.tags || []).map(
+                (tag, index) => (
+                  <div
+                    key={index}
+                    className="flex gap-2"
                   >
-                    <X size={16} />
-                  </Button>
-                </div>
-              )
-            )}
-          </div>
+                    <Input
+                      value={tag}
+                      onChange={(event) =>
+                        handleArrayChange(
+                          "tags",
+                          index,
+                          event.target
+                            .value
+                        )
+                      }
+                      placeholder="e.g. protein"
+                    />
+
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() =>
+                        removeArrayItem(
+                          "tags",
+                          index
+                        )
+                      }
+                    >
+                      <X size={16} />
+                    </Button>
+                  </div>
+                )
+              )}
+            </div>
+          ) : (
+            <p className={`rounded-lg border border-dashed px-3 py-2.5 text-xs ${accent.icon} border-current/30`}>
+              No tags yet — tags help customers find this product.
+            </p>
+          )}
         </div>
       </div>
     );
   }
 
   function renderSettings() {
+    const accent = getStepAccent(5);
+
     const switches = [
       [
         "isFeatured",
         "Featured Product",
         "Show this product as featured.",
+        Sparkles,
       ],
       [
         "isPopular",
         "Popular Product",
-        "Mark this product as popular.",
+        "Show this product as popular.",
+        TrendingUp,
       ],
       [
         "isRecent",
         "Recent Product",
-        "Mark this product as recently added.",
+        "Mark this product as recent.",
+        Clock,
       ],
       [
         "isTopRated",
         "Top Rated",
         "Mark this product as top rated.",
+        Star,
       ],
       [
         "isTrending",
         "Trending Product",
         "Show this product as trending.",
+        Award,
       ],
     ];
 
     return (
       <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold sm:text-xl">
-            Product Settings
-          </h3>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Control product visibility and
-            merchandising.
-          </p>
-        </div>
-
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <Label>Status</Label>
-
-            <Select
-              value={form.status}
-              onValueChange={(value) =>
-                handleChange(
-                  "status",
-                  value
-                )
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="active">
-                  Active
-                </SelectItem>
-
-                <SelectItem value="inactive">
-                  Inactive
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Tax Rate (%)</Label>
-
-            <Input
-              type="number"
-              value={form.taxRate}
-              onChange={(event) =>
-                handleChange(
-                  "taxRate",
-                  event.target.value
-                )
-              }
-              className={
-                errors.taxRate
-                  ? "border-red-400 focus-visible:ring-red-400"
-                  : ""
-              }
-            />
-
-            <FieldError message={errors.taxRate} />
-          </div>
-        </div>
+        <SectionHeading
+          icon={Settings2}
+          accent={accent}
+          title="Product Settings"
+          description="Configure product visibility."
+        />
 
         <div className="grid gap-3">
           {switches.map(
-            ([field, label, description]) => (
-              <div
-                key={field}
-                className="flex items-center justify-between gap-4 rounded-2xl border bg-muted/20 p-4 sm:p-5"
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold">
-                    {label}
-                  </p>
+            ([
+              field,
+              label,
+              description,
+              Icon,
+            ]) => {
+              const checked = Boolean(form[field]);
 
-                  <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                    {description}
-                  </p>
+              return (
+                <div
+                  key={field}
+                  className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors sm:p-5 ${checked ? `${accent.border} ${accent.chip}` : "bg-muted/20"
+                    }`}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${checked ? "bg-background" : "bg-muted"
+                        }`}
+                    >
+                      <Icon
+                        size={16}
+                        className={checked ? accent.icon : "text-muted-foreground"}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        {label}
+                      </p>
+
+                      <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+                        {description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Switch
+                    checked={checked}
+                    onCheckedChange={(
+                      value
+                    ) =>
+                      handleChange(
+                        field,
+                        Boolean(value)
+                      )
+                    }
+                  />
                 </div>
-
-                <Switch
-                  checked={Boolean(
-                    form[field]
-                  )}
-                  onCheckedChange={(value) =>
-                    handleChange(
-                      field,
-                      Boolean(value)
-                    )
-                  }
-                />
-              </div>
-            )
+              );
+            }
           )}
         </div>
       </div>
@@ -3313,24 +4446,47 @@ export default function ProductForm({
   }
 
   function renderSeo() {
+    const accent = getStepAccent(6);
+
+    const schemaEnabled = Boolean(
+      form.seo.schema?.enabled
+    );
+
+    const customJson =
+      form.seo.schema?.customJson || "";
+
+    const prettyJson =
+      effectiveJsonLd.isValid &&
+        effectiveJsonLd.value
+        ? JSON.stringify(
+          effectiveJsonLd.value,
+          null,
+          2
+        )
+        : null;
+
     return (
       <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold sm:text-xl">
-            SEO Information
-          </h3>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Optimize your product for search
-            engines.
-          </p>
-        </div>
+        <SectionHeading
+          icon={Search}
+          accent={accent}
+          title="SEO Information"
+          description="Optimize your product for search engines and social sharing."
+        />
 
         {renderErrorSummary()}
 
-        <div className="rounded-2xl border bg-muted/20 p-4 sm:p-6">
-          <div className="space-y-5">
-            <div className="grid gap-2">
+        {/* Meta basics */}
+        <div className="rounded-xl border bg-muted/20 p-4 sm:p-6">
+          <CardHeading
+            icon={Globe}
+            accent={accent}
+            title="Search Engine Meta"
+            description="Controls how this product appears in search results."
+          />
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-2 sm:col-span-2">
               <Label>SEO Title</Label>
 
               <Input
@@ -3345,8 +4501,10 @@ export default function ProductForm({
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label>SEO Description</Label>
+            <div className="grid gap-2 sm:col-span-2">
+              <Label>
+                SEO Description
+              </Label>
 
               <Textarea
                 value={
@@ -3359,16 +4517,19 @@ export default function ProductForm({
                   )
                 }
                 placeholder="SEO description"
-                rows={5}
-                className="resize-y"
+                rows={4}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label>SEO Keywords</Label>
+              <Label>
+                SEO Keywords
+              </Label>
 
               <Input
-                value={form.seo.keywords}
+                value={
+                  form.seo.keywords
+                }
                 onChange={(event) =>
                   handleSeoChange(
                     "keywords",
@@ -3377,28 +4538,6 @@ export default function ProductForm({
                 }
                 placeholder="keyword, product, supplement"
               />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Canonical URL</Label>
-
-              <Input
-                value={form.seo.canonical}
-                onChange={(event) =>
-                  handleSeoChange(
-                    "canonical",
-                    event.target.value
-                  )
-                }
-                placeholder="https://example.com/product/..."
-                className={
-                  errors.canonical
-                    ? "border-red-400 focus-visible:ring-red-400"
-                    : ""
-                }
-              />
-
-              <FieldError message={errors.canonical} />
             </div>
 
             <div className="grid gap-2">
@@ -3415,14 +4554,560 @@ export default function ProductForm({
                 placeholder="Author"
               />
             </div>
+
+            <div className="grid gap-2 sm:col-span-2">
+              <Label>
+                Canonical URL
+              </Label>
+
+              <Input
+                value={
+                  form.seo.canonical
+                }
+                onChange={(event) =>
+                  handleSeoChange(
+                    "canonical",
+                    event.target.value
+                  )
+                }
+                placeholder="https://example.com/product/..."
+                className={
+                  errors.canonical
+                    ? "border-red-400"
+                    : ""
+                }
+              />
+
+              <FieldError
+                message={errors.canonical}
+              />
+            </div>
+
+            <div className="grid gap-2 sm:col-span-2">
+              <Label>
+                Robots Meta Tag
+              </Label>
+
+              <Select
+                value={
+                  form.seo.robots ||
+                  "index, follow"
+                }
+                onValueChange={(value) =>
+                  handleSeoChange(
+                    "robots",
+                    value
+                  )
+                }
+              >
+                <SelectTrigger className="h-11 sm:w-[280px]">
+                  <SelectValue placeholder="Select robots configuration" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="index, follow">
+                    Index, Follow (Recommended)
+                  </SelectItem>
+
+                  <SelectItem value="noindex, nofollow">
+                    No-Index, No-Follow
+                  </SelectItem>
+
+                  <SelectItem value="noindex, follow">
+                    No-Index, Follow
+                  </SelectItem>
+
+                  <SelectItem value="index, nofollow">
+                    Index, No-Follow
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border bg-primary/5 p-4 sm:p-5">
+        {/* Structured data / JSON-LD */}
+        <div className="rounded-xl border bg-muted/20 p-4 sm:p-6">
+          <CardHeading
+            icon={Code2}
+            accent={accent}
+            title="Structured Data (JSON-LD)"
+            description="Helps search engines understand this product for rich results."
+            action={
+              <Switch
+                checked={schemaEnabled}
+                onCheckedChange={(value) =>
+                  handleSeoNestedChange(
+                    "schema",
+                    "enabled",
+                    Boolean(value)
+                  )
+                }
+              />
+            }
+          />
+
+          {schemaEnabled ? (
+            <div className="space-y-5">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>
+                    Schema Type
+                  </Label>
+
+                  <Select
+                    value={
+                      form.seo.schema
+                        ?.type ||
+                      "Product"
+                    }
+                    onValueChange={(
+                      value
+                    ) =>
+                      handleSeoNestedChange(
+                        "schema",
+                        "type",
+                        value
+                      )
+                    }
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select schema type" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="Product">
+                        Product
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <p className="text-xs text-muted-foreground">
+                    Auto-generated from the product's name, images, brand and variant pricing.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label>
+                    Custom JSON-LD (optional)
+                  </Label>
+
+                  {customJson.trim() && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleSeoNestedChange(
+                          "schema",
+                          "customJson",
+                          ""
+                        )
+                      }
+                      className="text-xs font-medium text-muted-foreground underline-offset-2 hover:underline"
+                    >
+                      Reset to auto-generated
+                    </button>
+                  )}
+                </div>
+
+                <Textarea
+                  value={customJson}
+                  onChange={(event) =>
+                    handleSeoNestedChange(
+                      "schema",
+                      "customJson",
+                      event.target.value
+                    )
+                  }
+                  placeholder='Paste a custom JSON-LD object to override the auto-generated schema, e.g. { "@context": "https://schema.org/", "@type": "Product", ... }'
+                  rows={6}
+                  className={`font-mono text-xs ${errors.schemaJson
+                    ? "border-red-400"
+                    : ""
+                    }`}
+                />
+
+                <FieldError
+                  message={errors.schemaJson}
+                />
+              </div>
+
+              <div className="rounded-xl border bg-background p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Braces
+                      size={15}
+                      className={accent.icon}
+                    />
+
+                    <p className="text-xs font-semibold">
+                      {effectiveJsonLd.isCustom
+                        ? "Custom schema preview"
+                        : "Auto-generated preview"}
+                    </p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={
+                      copySchemaToClipboard
+                    }
+                    disabled={
+                      !effectiveJsonLd.isValid
+                    }
+                    className="h-8 px-2.5 text-xs"
+                  >
+                    {schemaCopied ? (
+                      <>
+                        <CheckCheck
+                          size={13}
+                          className="mr-1.5 text-emerald-500"
+                        />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy
+                          size={13}
+                          className="mr-1.5"
+                        />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {prettyJson ? (
+                  <pre className="max-h-64 overflow-auto rounded-lg bg-muted/40 p-3 text-[11px] leading-relaxed">
+                    <code>{prettyJson}</code>
+                  </pre>
+                ) : (
+                  <p className="flex items-center gap-1.5 rounded-lg border border-dashed border-red-300 bg-red-50 px-3 py-2.5 text-xs text-red-600 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-400">
+                    <AlertCircle
+                      size={12}
+                      className="shrink-0"
+                    />
+                    Fix the custom JSON above to see a preview.
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-lg border border-dashed px-3 py-2.5 text-xs text-muted-foreground">
+              Structured data is disabled — this product won't emit a JSON-LD schema.
+            </p>
+          )}
+        </div>
+
+        {/* Social sharing */}
+        <div className="rounded-xl border bg-muted/20 p-4 sm:p-6">
+          <CardHeading
+            icon={Share2}
+            accent={accent}
+            title="Social Sharing"
+            description="Configure how this product looks when shared on social platforms."
+          />
+
+          <div className="grid gap-6">
+            <div className="rounded-xl border bg-background p-4 sm:p-5">
+              <CardHeading
+                icon={Link2}
+                title="Facebook (Open Graph)"
+                description="Used by Facebook and other platforms that read OG tags."
+              />
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>
+                    Facebook Title
+                  </Label>
+
+                  <Input
+                    value={
+                      form.seo.facebook
+                        ?.title || ""
+                    }
+                    onChange={(event) =>
+                      handleSeoNestedChange(
+                        "facebook",
+                        "title",
+                        event.target.value
+                      )
+                    }
+                    placeholder="Facebook Open Graph Title"
+                  />
+                </div>
+
+{/*test*/}
+                <div className="grid gap-2">
+                  <Label>
+                    Facebook Card
+                  </Label>
+
+                  <Select
+                    value={
+                      form.seo.facebook
+                        ?.card ||
+                      "summary_large_image"
+                    }
+                    onValueChange={(
+                      value
+                    ) =>
+                      handleSeoNestedChange(
+                        "facebook",
+                        "card",
+                        value
+                      )
+                    }
+                  >
+                    <SelectTrigger className="h-11 w-[250px]">
+                      <SelectValue placeholder="Select Twitter card" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="summary">
+                        Summary
+                      </SelectItem>
+
+                      <SelectItem value="summary_large_image">
+                        Summary Large Image
+                      </SelectItem>
+
+                      <SelectItem value="player">
+                        Player
+                      </SelectItem>
+
+                      <SelectItem value="app">
+                        App
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>
+                    Facebook URL
+                  </Label>
+
+                  <Input
+                    value={
+                      form.seo.facebook
+                        ?.url || ""
+                    }
+                    onChange={(event) =>
+                      handleSeoNestedChange(
+                        "facebook",
+                        "url",
+                        event.target.value
+                      )
+                    }
+                    placeholder="https://example.com/product/product-slug"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>
+                    Facebook Image Path
+                  </Label>
+
+                  <Input
+                    value={
+                      form.seo.facebook
+                        ?.image_path || ""
+                    }
+                    onChange={(event) =>
+                      handleSeoNestedChange(
+                        "facebook",
+                        "image_path",
+                        event.target.value
+                      )
+                    }
+                    placeholder="https://example.com/images/product-share.jpg"
+                  />
+                </div>
+
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label>
+                    Facebook Description
+                  </Label>
+
+                  <Textarea
+                    value={
+                      form.seo.facebook
+                        ?.description ||
+                      ""
+                    }
+                    onChange={(event) =>
+                      handleSeoNestedChange(
+                        "facebook",
+                        "description",
+                        event.target.value
+                      )
+                    }
+                    placeholder="Facebook Open Graph Description"
+                    rows={3}
+                  />
+                </div>
+
+
+              </div>
+            </div>
+
+            <div className="rounded-xl border bg-background p-4 sm:p-5">
+              <CardHeading
+                icon={AtSign}
+                title="Twitter / X"
+                description="Configure the Twitter/X card for this product."
+              />
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>
+                    Twitter Title
+                  </Label>
+
+                  <Input
+                    value={
+                      form.seo.twitter
+                        ?.title || ""
+                    }
+                    onChange={(event) =>
+                      handleSeoNestedChange(
+                        "twitter",
+                        "title",
+                        event.target.value
+                      )
+                    }
+                    placeholder="Twitter Display Card Title"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>
+                    Twitter Card
+                  </Label>
+
+                  <Select
+                    value={
+                      form.seo.twitter
+                        ?.card ||
+                      "summary_large_image"
+                    }
+                    onValueChange={(
+                      value
+                    ) =>
+                      handleSeoNestedChange(
+                        "twitter",
+                        "card",
+                        value
+                      )
+                    }
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select Twitter card" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="summary">
+                        Summary
+                      </SelectItem>
+
+                      <SelectItem value="summary_large_image">
+                        Summary Large Image
+                      </SelectItem>
+
+                      <SelectItem value="player">
+                        Player
+                      </SelectItem>
+
+                      <SelectItem value="app">
+                        App
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label>
+                    Twitter Description
+                  </Label>
+
+                  <Textarea
+                    value={
+                      form.seo.twitter
+                        ?.description ||
+                      ""
+                    }
+                    onChange={(event) =>
+                      handleSeoNestedChange(
+                        "twitter",
+                        "description",
+                        event.target.value
+                      )
+                    }
+                    placeholder="Twitter Description"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>
+                    Twitter Redirect URL
+                  </Label>
+
+                  <Input
+                    value={
+                      form.seo.twitter
+                        ?.redirect_url ||
+                      ""
+                    }
+                    onChange={(event) =>
+                      handleSeoNestedChange(
+                        "twitter",
+                        "redirect_url",
+                        event.target.value
+                      )
+                    }
+                    placeholder="https://site.com/target-path"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>
+                    Twitter Image Path
+                  </Label>
+
+                  <Input
+                    value={
+                      form.seo.twitter
+                        ?.image_path || ""
+                    }
+                    onChange={(event) =>
+                      handleSeoNestedChange(
+                        "twitter",
+                        "image_path",
+                        event.target.value
+                      )
+                    }
+                    placeholder="https://example.com/images/product-share.jpg"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Live preview */}
+        <div
+          className={`rounded-xl border p-4 sm:p-5 ${accent.border} ${accent.chip}`}
+        >
           <div className="flex gap-3">
             <Search
               size={20}
-              className="mt-0.5 shrink-0 text-primary"
+              className={`mt-0.5 shrink-0 ${accent.icon}`}
             />
 
             <div className="min-w-0">
@@ -3430,24 +5115,144 @@ export default function ProductForm({
                 SEO Preview
               </p>
 
-              <p className="mt-2 break-words text-sm font-medium">
+              <p className="mt-2 break-words text-sm font-medium text-sky-700 dark:text-sky-400">
                 {form.seo.title ||
                   form.name ||
                   "Product title"}
               </p>
 
-              <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {form.seo.description ||
                   form.description ||
                   "Product description will appear here."}
               </p>
 
-              <p className="mt-2 break-all text-xs text-primary">
+              <p className="mt-2 break-all text-xs text-emerald-600 dark:text-emerald-400">
                 {form.slug
                   ? `/product/${form.slug}`
                   : "/product/product-slug"}
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderStepIndicator() {
+    return (
+      <div className="w-full">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold">
+              Product Setup
+            </p>
+
+            <p className="text-xs text-muted-foreground">
+              Step {currentStep} of{" "}
+              {steps.length} · {steps[currentStep - 1]?.title}
+            </p>
+          </div>
+
+          <div className="rounded-full bg-muted px-3 py-1 text-xs font-semibold tabular-nums">
+            {progress}%
+          </div>
+        </div>
+
+        <div className="mb-5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${getStepAccent(currentStep).solid}`}
+            style={{
+              width: `${progress}%`,
+            }}
+          />
+        </div>
+
+        <div className="-mx-1 overflow-x-auto pb-1">
+          <div className="flex min-w-max gap-2 px-1">
+            {steps.map((step) => {
+              const Icon =
+                step.icon;
+
+              const active =
+                currentStep ===
+                step.id;
+
+              const completed =
+                currentStep >
+                step.id;
+
+              const invalid =
+                Boolean(
+                  stepHasError[
+                  step.id
+                  ]
+                );
+
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={() =>
+                    goToStep(
+                      step.id
+                    )
+                  }
+                  className={`flex min-w-[145px] items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all sm:min-w-[155px] ${invalid
+                    ? "border-red-300 bg-red-50 dark:border-red-900/60 dark:bg-red-950/30"
+                    : active
+                      ? `${step.accent.activeBorder} ${step.accent.activeBg} shadow-sm`
+                      : completed
+                        ? `${step.accent.border} bg-background`
+                        : "border-border bg-background hover:bg-muted/50"
+                    }`}
+                >
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${invalid
+                      ? "bg-red-500 text-white"
+                      : active
+                        ? `text-white ${step.accent.solid}`
+                        : completed
+                          ? `${step.accent.chip} ${step.accent.icon}`
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                  >
+                    {invalid ? (
+                      <AlertCircle
+                        size={17}
+                      />
+                    ) : completed ? (
+                      <Check
+                        size={17}
+                      />
+                    ) : (
+                      <Icon
+                        size={17}
+                      />
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <p
+                      className={`truncate text-xs font-semibold sm:text-sm ${invalid
+                        ? "text-red-600 dark:text-red-400"
+                        : active
+                          ? step.accent.activeText
+                          : ""
+                        }`}
+                    >
+                      {step.title}
+                    </p>
+
+                    <p className="truncate text-[10px] text-muted-foreground sm:text-xs">
+                      {invalid
+                        ? "Needs attention"
+                        : step.description}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -3504,21 +5309,28 @@ export default function ProductForm({
       >
         <DialogHeader className="shrink-0 border-b bg-background px-4 py-4 sm:px-7 sm:py-5">
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <DialogTitle className="truncate text-lg sm:text-2xl">
-                {product?.id
-                  ? "Edit Product"
-                  : "Create Product"}
-              </DialogTitle>
+            <div className="flex min-w-0 items-center gap-3">
+              <div
+                className={`hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:flex ${getStepAccent(currentStep).chip}`}
+              >
+                <Package size={19} className={getStepAccent(currentStep).icon} />
+              </div>
+              <div className="min-w-0">
+                <DialogTitle className="truncate text-lg sm:text-2xl">
+                  {product?.id
+                    ? "Edit Product"
+                    : "Create Product"}
+                </DialogTitle>
 
-              <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
-                Complete each step to configure
-                your product.
-              </p>
+                <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
+                  Complete each step to configure your product.
+                </p>
+              </div>
             </div>
 
-            <div className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold">
-              {currentStep}/{steps.length}
+            <div className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold tabular-nums">
+              {currentStep}/
+              {steps.length}
             </div>
           </div>
         </DialogHeader>
@@ -3533,10 +5345,11 @@ export default function ProductForm({
           </div>
         </div>
 
-        <DialogFooter className="shrink-0 border-t bg-background px-4 py-3 sm:px-7 sm:py-4 mb-1 sm:mr-0 mr-1">
+        <DialogFooter className="shrink-0 border-t bg-background px-4 py-3 sm:px-7 sm:py-4">
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="hidden text-xs text-muted-foreground sm:block">
-              {currentStep === steps.length
+              {currentStep ===
+                steps.length
                 ? "Review your information and save the product."
                 : `Step ${currentStep} of ${steps.length}`}
             </div>
@@ -3546,7 +5359,9 @@ export default function ProductForm({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={previousStep}
+                  onClick={
+                    previousStep
+                  }
                   className="flex-1 sm:flex-none"
                 >
                   <ChevronLeft
@@ -3557,10 +5372,13 @@ export default function ProductForm({
                 </Button>
               )}
 
-              {currentStep < steps.length ? (
+              {currentStep <
+                steps.length ? (
                 <Button
                   type="button"
-                  onClick={nextStep}
+                  onClick={
+                    nextStep
+                  }
                   className="flex-1 sm:flex-none"
                 >
                   Next
@@ -3575,7 +5393,9 @@ export default function ProductForm({
                     type="button"
                     variant="outline"
                     onClick={() =>
-                      onOpenChange(false)
+                      onOpenChange(
+                        false
+                      )
                     }
                     className="flex-1 sm:flex-none"
                   >
@@ -3584,15 +5404,17 @@ export default function ProductForm({
 
                   <Button
                     type="button"
-                    onClick={handleSubmit}
+                    onClick={
+                      handleSubmit
+                    }
                     disabled={saving}
                     className="flex-1 sm:flex-none"
                   >
                     {saving
                       ? "Saving..."
                       : product?.id
-                      ? "Update Product"
-                      : "Create Product"}
+                        ? "Update Product"
+                        : "Create Product"}
                   </Button>
                 </>
               )}

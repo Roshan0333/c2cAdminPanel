@@ -89,6 +89,41 @@ export default function CategoriesPage() {
     );
   };
 
+  const normalizeCategory = (category) => {
+    if (!category) {
+      return null;
+    }
+
+    const normalizedId = Number(category.id);
+
+    return {
+      id: Number.isFinite(normalizedId)
+        ? normalizedId
+        : category.id,
+
+      name: category.name || "",
+
+      slug: category.slug || "",
+
+      image: category.image || null,
+
+      parentId:
+        category.parentId === null ||
+        category.parentId === undefined ||
+        category.parentId === ""
+          ? null
+          : Number(category.parentId),
+
+      createdAt: category.createdAt || null,
+
+      children: Array.isArray(category.children)
+        ? category.children
+            .map(normalizeCategory)
+            .filter(Boolean)
+        : [],
+    };
+  };
+
   const fetchCategories = async () => {
     try {
       setLoading(true);
@@ -110,29 +145,20 @@ export default function CategoriesPage() {
         response?.data ||
         [];
 
-      const normalizeCategory = (category) => ({
-        id: Number(category.id),
-        name: category.name || "",
-        slug: category.slug || "",
-        image: category.image || null,
-        parentId:
-          category.parentId === null ||
-          category.parentId === undefined
-            ? null
-            : Number(category.parentId),
-        createdAt: category.createdAt || null,
-        children: Array.isArray(category.children)
-          ? category.children.map(normalizeCategory)
-          : [],
-      });
+      const normalizedCategories = Array.isArray(
+        rawCategories
+      )
+        ? rawCategories
+            .map(normalizeCategory)
+            .filter(Boolean)
+        : [];
 
-      setCategories(
-        Array.isArray(rawCategories)
-          ? rawCategories.map(normalizeCategory)
-          : []
-      );
+      setCategories(normalizedCategories);
     } catch (error) {
-      console.error("Fetch categories failed:", error);
+      console.error(
+        "Fetch categories failed:",
+        error
+      );
 
       toast.error(
         getApiErrorMessage(
@@ -160,10 +186,12 @@ export default function CategoriesPage() {
       .replace(/-+/g, "-");
   };
 
+
   const resetForm = () => {
     setCategoryForm({
       ...emptyCategory,
     });
+
     setEditingCategory(null);
     setImageFile(null);
     setImagePreview(null);
@@ -199,7 +227,14 @@ export default function CategoriesPage() {
     setFormOpen(true);
   };
 
-  const handleAddSubCategory = (parentCategory) => {
+  const handleAddSubCategory = (
+    parentCategory
+  ) => {
+    if (!parentCategory?.id) {
+      toast.error("Invalid parent category");
+      return;
+    }
+
     resetForm();
 
     setCategoryForm({
@@ -218,6 +253,11 @@ export default function CategoriesPage() {
   };
 
   const handleEditCategory = (category) => {
+    if (!category?.id) {
+      toast.error("Invalid category");
+      return;
+    }
+
     setEditingCategory(category);
 
     setCategoryForm({
@@ -244,17 +284,24 @@ export default function CategoriesPage() {
 
     if (!file.type.startsWith("image/")) {
       toast.error("Please select a valid image");
+
       event.target.value = "";
+
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image must be less than 5MB");
+
       event.target.value = "";
+
       return;
     }
 
-    if (imagePreview) {
+    if (
+      imagePreview &&
+      imagePreview.startsWith("blob:")
+    ) {
       URL.revokeObjectURL(imagePreview);
     }
 
@@ -270,7 +317,10 @@ export default function CategoriesPage() {
   };
 
   const removeImage = () => {
-    if (imagePreview?.startsWith("blob:")) {
+    if (
+      imagePreview &&
+      imagePreview.startsWith("blob:")
+    ) {
       URL.revokeObjectURL(imagePreview);
     }
 
@@ -285,7 +335,10 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     return () => {
-      if (imagePreview?.startsWith("blob:")) {
+      if (
+        imagePreview &&
+        imagePreview.startsWith("blob:")
+      ) {
         URL.revokeObjectURL(imagePreview);
       }
     };
@@ -294,12 +347,26 @@ export default function CategoriesPage() {
   const flattenCategories = (
     items,
     level = 0,
-    result = []
+    result = [],
+    parentPath = ""
   ) => {
-    items.forEach((category) => {
+    if (!Array.isArray(items)) {
+      return result;
+    }
+
+    items.forEach((category, index) => {
+      if (!category) {
+        return;
+      }
+
+      const currentPath = parentPath
+        ? `${parentPath}-${category.id}-${index}`
+        : `${category.id}-${index}`;
+
       result.push({
         ...category,
         level,
+        reactPath: currentPath,
       });
 
       if (
@@ -309,7 +376,8 @@ export default function CategoriesPage() {
         flattenCategories(
           category.children,
           level + 1,
-          result
+          result,
+          currentPath
         );
       }
     });
@@ -325,10 +393,19 @@ export default function CategoriesPage() {
   const getDescendantIds = (category) => {
     let ids = [];
 
-    if (category?.children?.length) {
+    if (
+      category &&
+      Array.isArray(category.children) &&
+      category.children.length
+    ) {
       category.children.forEach((child) => {
-        ids.push(child.id);
-        ids = ids.concat(getDescendantIds(child));
+        if (child?.id !== undefined) {
+          ids.push(child.id);
+
+          ids = ids.concat(
+            getDescendantIds(child)
+          );
+        }
       });
     }
 
@@ -346,19 +423,28 @@ export default function CategoriesPage() {
     ]);
 
     return flatCategories.filter(
-      (category) => !invalidIds.has(category.id)
+      (category) =>
+        !invalidIds.has(category.id)
     );
   }, [flatCategories, editingCategory]);
 
   const getParentName = (parentId) => {
-    if (!parentId) return "No Parent";
+    if (
+      parentId === null ||
+      parentId === undefined ||
+      parentId === ""
+    ) {
+      return "No Parent";
+    }
 
     const parent = flatCategories.find(
-      (item) => item.id === Number(parentId)
+      (item) =>
+        Number(item.id) === Number(parentId)
     );
 
     return parent?.name || "No Parent";
   };
+
 
   const handleSave = async () => {
     if (saving) return;
@@ -379,15 +465,29 @@ export default function CategoriesPage() {
 
       const parentId =
         categoryForm.parentId === "" ||
-        categoryForm.parentId === null
+        categoryForm.parentId === null ||
+        categoryForm.parentId === undefined
           ? null
           : Number(categoryForm.parentId);
 
       if (
         parentId !== null &&
-        (!Number.isInteger(parentId) || parentId <= 0)
+        (!Number.isInteger(parentId) ||
+          parentId <= 0)
       ) {
-        toast.error("Invalid parent category");
+        toast.error(
+          "Invalid parent category"
+        );
+        return;
+      }
+
+      if (
+        editingCategory &&
+        parentId === Number(editingCategory.id)
+      ) {
+        toast.error(
+          "A category cannot be its own parent"
+        );
         return;
       }
 
@@ -404,11 +504,13 @@ export default function CategoriesPage() {
 
       if (editingCategory) {
         response = await updateCategory(
-          editingCategory.id,
+          Number(editingCategory.id),
           payload
         );
       } else {
-        response = await createCategory(payload);
+        response = await createCategory(
+          payload
+        );
       }
 
       if (isApiFailure(response)) {
@@ -429,11 +531,15 @@ export default function CategoriesPage() {
       );
 
       setFormOpen(false);
+
       resetForm();
 
       await fetchCategories();
     } catch (error) {
-      console.error("Save category failed:", error);
+      console.error(
+        "Save category failed:",
+        error
+      );
 
       toast.error(
         getApiErrorMessage(
@@ -447,6 +553,7 @@ export default function CategoriesPage() {
       setSaving(false);
     }
   };
+
 
   const handleDelete = async () => {
     if (saving) return;
@@ -502,166 +609,224 @@ export default function CategoriesPage() {
   };
 
   const toggleCategory = (id) => {
+    if (
+      id === null ||
+      id === undefined
+    ) {
+      return;
+    }
+
     setExpandedCategories((prev) => ({
       ...prev,
       [id]: !prev[id],
     }));
   };
 
-  const renderCategoryRows = (items, level = 0) => {
-    return items.map((category) => {
-      const hasChildren =
-        category.children &&
-        category.children.length > 0;
+  const renderCategoryRows = (
+    items,
+    level = 0,
+    parentKey = "root"
+  ) => {
+    if (!Array.isArray(items)) {
+      return null;
+    }
 
-      const isExpanded =
-        expandedCategories[category.id];
+    return items.map(
+      (category, index) => {
+        if (!category) {
+          return null;
+        }
 
-      return (
-        <React.Fragment key={category.id}>
-          <tr className="border-b hover:bg-muted/40 transition">
-            <td className="px-4 py-4">
-              <div
-                className="flex items-center gap-3"
-                style={{
-                  paddingLeft: `${level * 28}px`,
-                }}
-              >
-                {hasChildren ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      toggleCategory(category.id)
-                    }
-                    className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted"
-                  >
-                    {isExpanded ? (
-                      <ChevronDown size={17} />
-                    ) : (
-                      <ChevronRight size={17} />
-                    )}
-                  </button>
-                ) : (
-                  <div className="w-7" />
-                )}
+        const hasChildren =
+          Array.isArray(category.children) &&
+          category.children.length > 0;
 
-                <div className="h-11 w-11 rounded-lg border bg-muted overflow-hidden flex items-center justify-center shrink-0">
-                  {category.image ? (
-                    <img
-                      src={category.image}
-                      alt={category.name}
-                      className="h-full w-full object-cover"
-                    />
+        const isExpanded =
+          expandedCategories[category.id];
+
+        /*
+         * React-only unique key.
+         *
+         * Example:
+         * root-14-0
+         * root-15-1
+         * root-14-0-15-0
+         */
+        const rowKey = `${parentKey}-${category.id}-${index}`;
+
+        return (
+          <React.Fragment key={rowKey}>
+            <tr className="border-b transition hover:bg-muted/40">
+              <td className="px-4 py-4">
+                <div
+                  className="flex items-center gap-3"
+                  style={{
+                    paddingLeft: `${level * 28}px`,
+                  }}
+                >
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toggleCategory(
+                          category.id
+                        )
+                      }
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md hover:bg-muted"
+                      aria-label={
+                        isExpanded
+                          ? "Collapse category"
+                          : "Expand category"
+                      }
+                    >
+                      {isExpanded ? (
+                        <ChevronDown
+                          size={17}
+                        />
+                      ) : (
+                        <ChevronRight
+                          size={17}
+                        />
+                      )}
+                    </button>
                   ) : (
-                    <ImageIcon
-                      size={18}
-                      className="text-muted-foreground"
-                    />
+                    <div className="h-7 w-7 shrink-0" />
                   )}
+
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+                    {category.image ? (
+                      <img
+                        src={category.image}
+                        alt={
+                          category.name ||
+                          "Category"
+                        }
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <ImageIcon
+                        size={18}
+                        className="text-muted-foreground"
+                      />
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">
+                      {category.name ||
+                        "Unnamed Category"}
+                    </p>
+
+                    <p className="truncate text-xs text-muted-foreground">
+                      /
+                      {category.slug ||
+                        "category-slug"}
+                    </p>
+                  </div>
                 </div>
+              </td>
 
-                <div className="min-w-0">
-                  <p className="font-semibold truncate">
-                    {category.name}
-                  </p>
-
-                  <p className="text-xs text-muted-foreground truncate">
-                    /{category.slug}
-                  </p>
-                </div>
-              </div>
-            </td>
-
-            <td className="px-4 py-4">
-              {category.parentId ? (
-                <span className="inline-flex rounded-full bg-blue-100 dark:bg-blue-950 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-300">
-                  Sub Category
-                </span>
-              ) : (
-                <span className="inline-flex rounded-full bg-green-100 dark:bg-green-950 px-3 py-1 text-xs font-medium text-green-700 dark:text-green-300">
-                  Parent
-                </span>
-              )}
-            </td>
-
-            <td className="px-4 py-4">
-              <span className="text-sm text-muted-foreground">
-                {getParentName(category.parentId)}
-              </span>
-            </td>
-
-            <td className="px-4 py-4">
-              <code className="rounded bg-muted px-2 py-1 text-xs">
-                {category.slug}
-              </code>
-            </td>
-
-            <td className="px-4 py-4 text-sm text-muted-foreground">
-              {category.createdAt
-                ? new Date(
-                    category.createdAt
-                  ).toLocaleDateString()
-                : "-"}
-            </td>
-
-            <td className="px-4 py-4">
-              <div className="flex items-center justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleAddSubCategory(category)
-                  }
-                  className="gap-1.5"
-                  disabled={saving}
-                >
-                  <Plus size={15} />
-                  <span className="hidden lg:inline">
-                    Add Sub
+              <td className="px-4 py-4">
+                {category.parentId ? (
+                  <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                    Sub Category
                   </span>
-                </Button>
+                ) : (
+                  <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
+                    Parent
+                  </span>
+                )}
+              </td>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    handleEditCategory(category)
-                  }
-                  disabled={saving}
-                >
-                  <Pencil size={16} />
-                </Button>
+              <td className="px-4 py-4">
+                <span className="text-sm text-muted-foreground">
+                  {getParentName(
+                    category.parentId
+                  )}
+                </span>
+              </td>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() =>
-                    setDeleteDialog({
-                      open: true,
-                      category,
-                    })
-                  }
-                  disabled={saving}
-                >
-                  <Trash2 size={16} />
-                </Button>
-              </div>
-            </td>
-          </tr>
+              <td className="px-4 py-4">
+                <code className="rounded bg-muted px-2 py-1 text-xs">
+                  {category.slug || "-"}
+                </code>
+              </td>
 
-          {hasChildren &&
-            isExpanded &&
-            renderCategoryRows(
-              category.children,
-              level + 1
-            )}
-        </React.Fragment>
-      );
-    });
+              <td className="px-4 py-4 text-sm text-muted-foreground">
+                {category.createdAt
+                  ? new Date(
+                      category.createdAt
+                    ).toLocaleDateString()
+                  : "-"}
+              </td>
+
+              <td className="px-4 py-4">
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      handleAddSubCategory(
+                        category
+                      )
+                    }
+                    className="gap-1.5"
+                    disabled={saving}
+                  >
+                    <Plus size={15} />
+
+                    <span className="hidden lg:inline">
+                      Add Sub
+                    </span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      handleEditCategory(
+                        category
+                      )
+                    }
+                    disabled={saving}
+                    aria-label="Edit category"
+                  >
+                    <Pencil size={16} />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() =>
+                      setDeleteDialog({
+                        open: true,
+                        category,
+                      })
+                    }
+                    disabled={saving}
+                    aria-label="Delete category"
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
+              </td>
+            </tr>
+
+            {hasChildren &&
+              isExpanded &&
+              renderCategoryRows(
+                category.children,
+                level + 1,
+                rowKey
+              )}
+          </React.Fragment>
+        );
+      }
+    );
   };
 
   return (
@@ -672,27 +837,29 @@ export default function CategoriesPage() {
             <div className="flex items-center gap-2">
               <FolderTree size={24} />
 
-              <h1 className="text-2xl md:text-3xl font-bold">
+              <h1 className="text-2xl font-bold md:text-3xl">
                 Categories
               </h1>
             </div>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Manage parent categories and sub categories.
+              Manage parent categories and sub
+              categories.
             </p>
           </div>
 
           <Button
             onClick={handleAddCategory}
-            className="gap-2"
+            className="w-full gap-2 sm:w-auto"
             disabled={saving}
           >
             <Plus size={17} />
+
             Add Category
           </Button>
         </div>
 
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1050px]">
               <thead className="bg-muted/50">
@@ -730,16 +897,18 @@ export default function CategoriesPage() {
                       colSpan={6}
                       className="h-40 text-center"
                     >
-                      <div className="flex justify-center items-center gap-2 text-muted-foreground">
+                      <div className="flex items-center justify-center gap-2 text-muted-foreground">
                         <Loader2
                           size={20}
                           className="animate-spin"
                         />
+
                         Loading categories...
                       </div>
                     </td>
                   </tr>
-                ) : categories.length === 0 ? (
+                ) : categories.length ===
+                  0 ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -759,9 +928,9 @@ export default function CategoriesPage() {
 
       {formOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border bg-background shadow-xl">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-5 py-4">
-              <div>
+          <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border bg-background shadow-xl">
+            <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between border-b bg-background px-5 py-4">
+              <div className="min-w-0">
                 <h2 className="text-lg font-semibold">
                   {editingCategory
                     ? "Edit Category"
@@ -770,7 +939,7 @@ export default function CategoriesPage() {
                     : "Add Category"}
                 </h2>
 
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {categoryForm.parentId
                     ? `Sub category of ${getParentName(
                         categoryForm.parentId
@@ -780,6 +949,7 @@ export default function CategoriesPage() {
               </div>
 
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 onClick={closeForm}
@@ -789,14 +959,18 @@ export default function CategoriesPage() {
               </Button>
             </div>
 
-            <div className="space-y-5 p-5">
+            <div className="flex-1 space-y-5 overflow-y-auto p-5">
               <div className="space-y-2">
-                <Label>Category Name</Label>
+                <Label>
+                  Category Name
+                </Label>
 
                 <Input
                   value={categoryForm.name}
                   onChange={(e) =>
-                    handleNameChange(e.target.value)
+                    handleNameChange(
+                      e.target.value
+                    )
                   }
                   placeholder="e.g. Pre-Workout"
                   disabled={saving}
@@ -809,12 +983,14 @@ export default function CategoriesPage() {
                 <Input
                   value={categoryForm.slug}
                   onChange={(e) =>
-                    setCategoryForm((prev) => ({
-                      ...prev,
-                      slug: generateSlug(
-                        e.target.value
-                      ),
-                    }))
+                    setCategoryForm(
+                      (prev) => ({
+                        ...prev,
+                        slug: generateSlug(
+                          e.target.value
+                        ),
+                      })
+                    )
                   }
                   placeholder="pre-workout"
                   disabled={saving}
@@ -826,18 +1002,20 @@ export default function CategoriesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Parent Category</Label>
+                <Label>
+                  Parent Category
+                </Label>
 
                 {categoryForm.parentId &&
                 !editingCategory ? (
                   <div className="rounded-lg border bg-muted/40 p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
                         <p className="text-xs text-muted-foreground">
                           Parent Category
                         </p>
 
-                        <p className="font-medium">
+                        <p className="truncate font-medium">
                           {getParentName(
                             categoryForm.parentId
                           )}
@@ -854,7 +1032,7 @@ export default function CategoriesPage() {
                             })
                           )
                         }
-                        className="text-xs text-destructive hover:underline"
+                        className="shrink-0 text-xs text-destructive hover:underline"
                         disabled={saving}
                       >
                         Remove
@@ -863,12 +1041,17 @@ export default function CategoriesPage() {
                   </div>
                 ) : (
                   <select
-                    value={categoryForm.parentId}
+                    value={
+                      categoryForm.parentId
+                    }
                     onChange={(e) =>
-                      setCategoryForm((prev) => ({
-                        ...prev,
-                        parentId: e.target.value,
-                      }))
+                      setCategoryForm(
+                        (prev) => ({
+                          ...prev,
+                          parentId:
+                            e.target.value,
+                        })
+                      )
                     }
                     disabled={saving}
                     className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -878,22 +1061,30 @@ export default function CategoriesPage() {
                     </option>
 
                     {availableParents.map(
-                      (category) => (
-                        <option
-                          key={category.id}
-                          value={category.id}
-                        >
-                          {"— ".repeat(category.level)}
-                          {category.name}
-                        </option>
-                      )
+                      (category, index) => {
+                        const optionKey = `parent-option-${category.id}-${category.level}-${index}`;
+
+                        return (
+                          <option
+                            key={optionKey}
+                            value={category.id}
+                          >
+                            {"— ".repeat(
+                              category.level
+                            )}
+                            {category.name}
+                          </option>
+                        );
+                      }
                     )}
                   </select>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label>Category Image</Label>
+                <Label>
+                  Category Image
+                </Label>
 
                 <div className="rounded-xl border border-dashed p-4">
                   {imagePreview ? (
@@ -908,7 +1099,8 @@ export default function CategoriesPage() {
                         type="button"
                         onClick={removeImage}
                         disabled={saving}
-                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white"
+                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white transition hover:bg-black/80"
+                        aria-label="Remove image"
                       >
                         <X size={16} />
                       </button>
@@ -925,7 +1117,8 @@ export default function CategoriesPage() {
                       </p>
 
                       <p className="mt-1 text-xs text-muted-foreground">
-                        PNG, JPG, WEBP — max 5MB
+                        PNG, JPG, WEBP — max
+                        5MB
                       </p>
 
                       <input
@@ -942,13 +1135,14 @@ export default function CategoriesPage() {
                 </div>
               </div>
 
+              {/* PREVIEW */}
               <div className="rounded-xl border bg-muted/30 p-4">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Preview
                 </p>
 
                 <div className="flex items-center gap-3">
-                  <div className="h-14 w-14 overflow-hidden rounded-lg border bg-background flex items-center justify-center">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-background">
                     {imagePreview ? (
                       <img
                         src={imagePreview}
@@ -964,17 +1158,18 @@ export default function CategoriesPage() {
                   </div>
 
                   <div className="min-w-0">
-                    <p className="font-semibold truncate">
+                    <p className="truncate font-semibold">
                       {categoryForm.name ||
                         "Category Name"}
                     </p>
 
-                    <p className="text-xs text-muted-foreground truncate">
-                      /{categoryForm.slug ||
+                    <p className="truncate text-xs text-muted-foreground">
+                      /
+                      {categoryForm.slug ||
                         "category-slug"}
                     </p>
 
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
                       Parent:{" "}
                       {getParentName(
                         categoryForm.parentId
@@ -985,8 +1180,9 @@ export default function CategoriesPage() {
               </div>
             </div>
 
-            <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-background px-5 py-4">
+            <div className="sticky bottom-0 flex shrink-0 justify-end gap-2 border-t bg-background px-5 py-4">
               <Button
+                type="button"
                 variant="outline"
                 onClick={closeForm}
                 disabled={saving}
@@ -995,6 +1191,7 @@ export default function CategoriesPage() {
               </Button>
 
               <Button
+                type="button"
                 onClick={handleSave}
                 disabled={saving}
                 className="gap-2"
@@ -1031,22 +1228,25 @@ export default function CategoriesPage() {
             <p className="mt-2 text-sm text-muted-foreground">
               Are you sure you want to delete{" "}
               <strong>
-                {deleteDialog.category?.name}
+                {deleteDialog.category
+                  ?.name || "this category"}
               </strong>
               ?
             </p>
 
-            {deleteDialog.category?.children
-              ?.length > 0 && (
-              <div className="mt-4 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 p-3 text-sm text-yellow-800 dark:text-yellow-300">
-                This category contains sub categories.
-                Make sure you handle the related
-                categories before deleting.
+            {deleteDialog.category
+              ?.children?.length > 0 && (
+              <div className="mt-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-300">
+                This category contains sub
+                categories. Make sure you handle
+                the related categories before
+                deleting.
               </div>
             )}
 
             <div className="mt-6 flex justify-end gap-2">
               <Button
+                type="button"
                 variant="outline"
                 onClick={() =>
                   setDeleteDialog({
@@ -1060,6 +1260,7 @@ export default function CategoriesPage() {
               </Button>
 
               <Button
+                type="button"
                 variant="destructive"
                 onClick={handleDelete}
                 disabled={saving}
